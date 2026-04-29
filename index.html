@@ -62,8 +62,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .xrow td{padding:0;background:var(--bg2);}
 .xi{padding:14px 14px 14px 38px;display:flex;flex-direction:column;gap:11px;}
 .igrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:8px;}
+.ii{min-width:0;overflow:hidden;}
 .ii label{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:2px;}
-.ii span{font-size:13px;}
+.ii span{font-size:13px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .bbar{background:var(--w);border:1px solid var(--br);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:10px;max-width:480px;}
 .pbw{flex:1;height:4px;background:var(--br);border-radius:2px;overflow:hidden;}
 .pb{height:100%;background:var(--g);border-radius:2px;}
@@ -755,12 +756,12 @@ function buildX(c){
       <button class="btn bs bxs" id="edit-info-${c.id}" style="margin-left:auto;flex-shrink:0;">✏️ Redigera uppgifter</button>
     </div>
     <div class="igrid">
-      <div class="ii"><label>Namn</label><span>${esc(c.name)}</span></div>
+      <div class="ii"><label>Namn</label><span title="${esc(c.name)}">${esc(c.name)}</span></div>
       <div class="ii"><label>Personnummer</label><span>${c.ssn||'–'}</span></div>
       <div class="ii"><label>Telefon</label><span>${c.phone||'–'}</span></div>
-      <div class="ii"><label>E-post</label><span>${c.email||'–'}</span></div>
-      <div class="ii"><label>Adress</label><span>${c.address||'–'}</span></div>
-      <div class="ii"><label>Säljare</label><span>${c.saljare||'–'}</span></div>
+      <div class="ii"><label>E-post</label><span title="${esc(c.email||'')}">${c.email||'–'}</span></div>
+      <div class="ii"><label>Adress</label><span title="${esc(c.address||'')}">${c.address||'–'}</span></div>
+      <div class="ii"><label>Säljare</label><span><span class="seller-pill">${c.saljare||'–'}</span></span></div>
       <div class="ii"><label>Paket</label><span>${pl(c.pkg)}</span></div>
       <div class="ii"><label>Kund sedan</label><span>${new Date(c.created_at).toLocaleDateString('sv-SE')}</span></div>
     </div>
