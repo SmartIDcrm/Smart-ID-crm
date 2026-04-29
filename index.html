@@ -1343,23 +1343,23 @@ function rKTg(){
 
 // EMAIL
 function rEmail(el){
-  el.innerHTML=`<div class="ph"><div><div class="ph-t">E-post utskick</div><div class="ph-s">Skicka från support@smartid.se</div></div></div>
+  el.innerHTML=`<div class="ph"><div><div class="ph-t">E-post utskick</div><div class="ph-s">Skicka från noreply@smartid.se</div></div></div>
   <div class="ca"><div style="max-width:720px;"><div class="cc"><h3>✉️ Nytt e-postmeddelande</h3>
-    <div class="fg"><label>Från</label><div class="fromf">📧 <span>support@smartid.se</span> &nbsp;·&nbsp; SmartID Sverige</div></div>
+    <div class="fg"><label>Från</label><div class="fromf">📧 <span>noreply@smartid.se</span> &nbsp;·&nbsp; Svar går till support@smartid.se</div></div>
     <div class="fg"><label>Skicka till</label>
       <div class="rtog"><button class="rb ${S.emailTo==='single'?'a':''}" id="es-s">Enskild</button><button class="rb ${S.emailTo==='multi'?'a':''}" id="es-m">Flera (BCC)</button></div>
       <div id="e-area"></div>
     </div>
     <div class="fg"><label>Ämne</label><input id="e-subj" type="text" placeholder="Ämnesrad..."></div>
-    <div class="fg"><label>Meddelande</label><textarea id="e-body" rows="7" placeholder="Skriv meddelandet...&#10;[namn] = mottagarens namn"></textarea></div>
-    <div class="pnote"><b>🔌 Kopplas till e-posttjänst för att aktiveras:</b><br>Resend · SendGrid · Mailgun</div>
-    <button class="sbtn" disabled>✉️ Skicka (ej aktiverat)</button>
+    <div class="fg"><label>Meddelande</label><textarea id="e-body" rows="7" placeholder="Skriv meddelandet...&#10;[namn] = mottagarens namn&#10;[paket] = kundens paket"></textarea></div>
+    <div id="e-status" style="font-size:13px;margin:10px 0;display:none;"></div>
+    <button class="sbtn" id="e-send-btn">✉️ Skicka e-post</button>
   </div></div></div>`;
   const area=el.querySelector('#e-area');
   function re(){
     area.innerHTML='';
     if(S.emailTo==='single'){
-      area.innerHTML=`<input type="email" placeholder="mottagare@email.se" style="width:100%;padding:7px 10px;border:1px solid var(--br);border-radius:8px;background:var(--bg);color:var(--tx);font-size:13px;outline:none;margin-bottom:5px;"><select id="ec" style="width:100%;padding:7px 10px;border:1px solid var(--br);border-radius:8px;background:var(--bg);color:var(--tx);font-size:13px;outline:none;"><option value="">-- Välj kund --</option>${C.filter(c=>c.email&&!c.archived).map(c=>`<option value="${c.email}">${esc(c.name)} (${c.email})</option>`).join('')}</select>`;
+      area.innerHTML=`<select id="ec" style="width:100%;padding:7px 10px;border:1px solid var(--br);border-radius:8px;background:var(--bg);color:var(--tx);font-size:13px;outline:none;"><option value="">-- Välj kund --</option>${C.filter(c=>c.email&&!c.archived).map(c=>`<option value="${c.id}">${esc(c.name)} (${c.email})</option>`).join('')}</select>`;
     } else {
       const q=(S.eRS||'').toLowerCase();
       const wE=C.filter(c=>c.email&&!c.archived&&(!q||(c.name||'').toLowerCase().includes(q)||(c.email||'').toLowerCase().includes(q)));
@@ -1372,6 +1372,88 @@ function rEmail(el){
   el.querySelector('#es-s').addEventListener('click',()=>{S.emailTo='single';re();});
   el.querySelector('#es-m').addEventListener('click',()=>{S.emailTo='multi';re();});
   re();
+
+  // Wire send button
+  el.querySelector('#e-send-btn').addEventListener('click',async()=>{
+    const subjEl=el.querySelector('#e-subj');
+    const bodyEl=el.querySelector('#e-body');
+    const stEl=el.querySelector('#e-status');
+    const btn=el.querySelector('#e-send-btn');
+    
+    const subj=subjEl.value.trim();
+    const body=bodyEl.value.trim();
+    if(!subj){stEl.textContent='⚠️ Skriv ett ämne.';stEl.style.color='var(--err)';stEl.style.display='block';return;}
+    if(!body){stEl.textContent='⚠️ Skriv ett meddelande.';stEl.style.color='var(--err)';stEl.style.display='block';return;}
+    
+    // Get recipients
+    let recipients=[];
+    if(S.emailTo==='single'){
+      const cId=el.querySelector('#ec')?.value;
+      if(!cId){stEl.textContent='⚠️ Välj en kund att skicka till.';stEl.style.color='var(--err)';stEl.style.display='block';return;}
+      const c=C.find(x=>x.id===cId);
+      if(c)recipients.push(c);
+    } else {
+      S.eSel.forEach(id=>{const c=C.find(x=>x.id===id);if(c)recipients.push(c);});
+      if(recipients.length===0){stEl.textContent='⚠️ Välj minst en kund.';stEl.style.color='var(--err)';stEl.style.display='block';return;}
+    }
+    
+    btn.disabled=true;btn.textContent='⏳ Skickar...';
+    stEl.textContent=`Skickar till ${recipients.length} mottagare...`;stEl.style.color='var(--mu)';stEl.style.display='block';
+    
+    let sent=0,failed=0;
+    for(const c of recipients){
+      // Personalize body: replace [namn] with first name, [paket] with package
+      const firstName=(c.name||'').split(' ')[0]||c.name;
+      const personalBody=body.replace(/\[namn\]/gi,firstName).replace(/\[paket\]/gi,pl(c.pkg)||'-');
+      const ok=await sendCustomEmail({
+        to:c.email,
+        subject:subj,
+        body:personalBody,
+        customerId:c.id,
+        recipientName:c.name
+      });
+      if(ok)sent++; else failed++;
+    }
+    
+    btn.disabled=false;btn.textContent='✉️ Skicka e-post';
+    if(failed===0){
+      stEl.textContent=`✓ ${sent} mail skickade!`;stEl.style.color='var(--g)';
+      subjEl.value='';bodyEl.value='';S.eSel.clear();
+      setTimeout(()=>{stEl.style.display='none';re();},3000);
+    } else {
+      stEl.textContent=`⚠️ ${sent} mail skickade, ${failed} misslyckades.`;stEl.style.color='var(--warn)';
+    }
+  });
+}
+
+// Send a custom email via Edge Function
+async function sendCustomEmail({to, subject, body, customerId, recipientName}){
+  try {
+    const {data:{session}}=await sb.auth.getSession();
+    const token=session?.access_token;
+    if(!token) return false;
+    
+    const response=await fetch(`${SUPABASE_URL}/functions/v1/send-welcome-email`,{
+      method:'POST',
+      headers:{
+        'Authorization':`Bearer ${token}`,
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_KEY
+      },
+      body:JSON.stringify({
+        customMail:true,
+        to,
+        subject,
+        body,
+        customerId,
+        recipientName
+      })
+    });
+    return response.ok;
+  } catch(err){
+    console.error('sendCustomEmail error:',err);
+    return false;
+  }
 }
 
 // SMS
