@@ -212,6 +212,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="sbi active" data-tab="kunder"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg><span>Kunder</span><span class="sbdg" id="tc-k">0</span></button>
       <button class="sbi" data-tab="statistik"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="9" width="3" height="5"/><rect x="6.5" y="5" width="3" height="9"/><rect x="11" y="2" width="3" height="12"/></svg><span>Statistik</span></button>
       <button class="sbi" data-tab="kundtjanst"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 13.7C8 13.7 2 9.5 2 5.5a3.5 3.5 0 0 1 6-2.4A3.5 3.5 0 0 1 14 5.5c0 4-6 8.2-6 8.2z"/></svg><span>Kundtjänst</span><span class="sbdg" id="tc-kt">0</span></button>
+      <button class="sbi" data-tab="saljare"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5.5" cy="5" r="2.5"/><path d="M1 14c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5"/><circle cx="11.5" cy="6" r="2"/><path d="M9 14c.5-2 2-3.5 4-3.5s2.5 1 3 2"/></svg><span>Säljare</span><span class="sbdg" id="tc-sj">0</span></button>
       <div class="sbsc">Kommunikation</div>
       <button class="sbi" data-tab="arkiv"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="14" height="3" rx="1"/><path d="M2 6v7a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6"/><line x1="6" y1="10" x2="10" y2="10"/></svg><span>Borttagna kunder</span><span class="sbdg" id="tc-ark">0</span></button>
       <button class="sbi" data-tab="email"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="12" height="10" rx="1"/><path d="M2 4l6 5 6-5"/></svg><span>E-post utskick</span></button>
@@ -675,11 +676,13 @@ function render(){
   document.getElementById('tc-kt').textContent=favs.length;
   const arkN=C.filter(c=>c.archived&&c.deleted_at).length;
   const arkEl=document.getElementById('tc-ark');if(arkEl)arkEl.textContent=arkN;
+  const sjEl=document.getElementById('tc-sj');if(sjEl)sjEl.textContent=SELLERS.length;
   const m=document.getElementById('main');m.innerHTML='';
   if(S.tab==='kunder')rKunder(m);
   else if(S.tab==='statistik')rStats(m);
   else if(S.tab==='kundtjanst')rKT(m);
   else if(S.tab==='arkiv')rArkiv(m);
+  else if(S.tab==='saljare')rSaljare(m);
   else if(S.tab==='email')rEmail(m);
   else if(S.tab==='sms')rSMS(m);
 }
@@ -1434,6 +1437,128 @@ function rKTg(){
 }
 
 // EMAIL
+function rSaljare(el){
+  const isAdmin=currentUser?.role==='admin';
+  
+  // Räkna kunder per säljare
+  const customersPerSeller={};
+  C.filter(c=>!c.archived).forEach(c=>{
+    if(c.saljare){
+      customersPerSeller[c.saljare]=(customersPerSeller[c.saljare]||0)+1;
+    }
+  });
+  
+  el.innerHTML=`<div class="ph">
+    <div><div class="ph-t">Säljare</div><div class="ph-s">${SELLERS.length} säljare totalt</div></div>
+    <div class="ph-a">${isAdmin?'<button class="btn bp" id="add-seller-btn">+ Ny säljare</button>':''}</div>
+  </div>
+  <div class="ca">
+    <div style="max-width:800px;">
+      ${!isAdmin?'<div class="pnote" style="margin-bottom:1rem;"><b>ℹ️ Bara admin kan lägga till eller ta bort säljare.</b></div>':''}
+      <div class="cc" style="padding:0;overflow:hidden;">
+        <table class="ct" style="width:100%;">
+          <thead><tr><th>Namn</th><th>Status</th><th>Antal aktiva kunder</th>${isAdmin?'<th style="width:120px;">Åtgärder</th>':''}</tr></thead>
+          <tbody id="sj-tb">
+            ${SELLERS.map(s=>`
+              <tr>
+                <td class="tn">${esc(s.name)}</td>
+                <td><span class="bpill ${s.active!==false?'bon':'bof'}">${s.active!==false?'Aktiv':'Inaktiv'}</span></td>
+                <td class="tmu">${customersPerSeller[s.name]||0}</td>
+                ${isAdmin?`<td>
+                  <button class="btn bxs" data-action="edit" data-id="${s.id}" style="font-size:11px;">✏️</button>
+                  <button class="btn bxs" data-action="toggle" data-id="${s.id}" style="font-size:11px;">${s.active!==false?'⏸':'▶️'}</button>
+                  <button class="btn bxs" data-action="delete" data-id="${s.id}" style="font-size:11px;background:var(--errl);color:var(--err);">🗑</button>
+                </td>`:''}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+  
+  if(isAdmin){
+    el.querySelector('#add-seller-btn').addEventListener('click',()=>showAddSellerModal());
+    
+    el.querySelectorAll('button[data-action]').forEach(btn=>{
+      btn.addEventListener('click',async()=>{
+        const action=btn.dataset.action;
+        const id=btn.dataset.id;
+        const seller=SELLERS.find(s=>s.id===id);
+        if(!seller) return;
+        
+        if(action==='edit'){
+          const newName=prompt('Nytt namn för säljare:',seller.name);
+          if(!newName||newName===seller.name) return;
+          const {error}=await sb.from('sellers').update({name:newName}).eq('id',id);
+          if(error){alert('Fel: '+error.message);return;}
+          await loadFromSupabase();render();
+        }
+        else if(action==='toggle'){
+          const newActive=!(seller.active!==false);
+          const {error}=await sb.from('sellers').update({active:newActive}).eq('id',id);
+          if(error){alert('Fel: '+error.message);return;}
+          await loadFromSupabase();render();
+        }
+        else if(action==='delete'){
+          const count=customersPerSeller[seller.name]||0;
+          if(count>0){
+            alert(`Kan inte ta bort ${seller.name} – det finns ${count} aktiva kunder kopplade. Sätt säljaren som "Inaktiv" istället.`);
+            return;
+          }
+          if(!confirm(`Ta bort säljaren ${seller.name}? Detta går inte att ångra.`)) return;
+          const {error}=await sb.from('sellers').delete().eq('id',id);
+          if(error){alert('Fel: '+error.message);return;}
+          await loadFromSupabase();render();
+        }
+      });
+    });
+  }
+}
+
+function showAddSellerModal(){
+  const mc=document.getElementById('mc');mc.innerHTML='';
+  const ov=document.createElement('div');ov.className='overlay';
+  ov.innerHTML=`<div class="mdl" style="max-width:400px;">
+    <h2>Lägg till ny säljare</h2>
+    <div class="fg" style="margin-bottom:1rem;">
+      <label>Namn *</label>
+      <input id="ns-name" type="text" placeholder="t.ex. Anna" style="width:100%;padding:8px 10px;border:1px solid var(--br);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none;">
+    </div>
+    <div id="ns-status" style="font-size:13px;margin:10px 0;display:none;"></div>
+    <div class="mdla">
+      <button class="btn bs" id="ns-cancel">Avbryt</button>
+      <button class="btn bp" id="ns-save">Lägg till</button>
+    </div>
+  </div>`;
+  ov.querySelector('#ns-cancel').addEventListener('click',closeM);
+  ov.addEventListener('click',e=>{if(e.target===ov)closeM();});
+  
+  ov.querySelector('#ns-save').addEventListener('click',async()=>{
+    const name=ov.querySelector('#ns-name').value.trim();
+    if(!name){alert('Namn är obligatoriskt.');return;}
+    if(SELLERS.find(s=>s.name.toLowerCase()===name.toLowerCase())){
+      alert('Säljaren "'+name+'" finns redan.');return;
+    }
+    const btn=ov.querySelector('#ns-save');
+    btn.disabled=true;btn.textContent='Sparar...';
+    const {error}=await sb.from('sellers').insert({name,active:true});
+    if(error){alert('Fel: '+error.message);btn.disabled=false;btn.textContent='Lägg till';return;}
+    
+    await loadFromSupabase();
+    closeM();render();
+  });
+  
+  // Auto-focus
+  setTimeout(()=>ov.querySelector('#ns-name').focus(),50);
+  // Enter to save
+  ov.querySelector('#ns-name').addEventListener('keydown',e=>{
+    if(e.key==='Enter') ov.querySelector('#ns-save').click();
+  });
+  
+  mc.appendChild(ov);
+}
+
 function rEmail(el){
   el.innerHTML=`<div class="ph"><div><div class="ph-t">E-post utskick</div><div class="ph-s">Skicka från noreply@smartid.se</div></div></div>
   <div class="ca"><div style="max-width:720px;"><div class="cc"><h3>✉️ Nytt e-postmeddelande</h3>
@@ -1845,11 +1970,14 @@ function showImportModal(){
   const mc=document.getElementById('mc');mc.innerHTML='';
   let headers=[],rows=[],mapping={};
   const CRM_FIELDS=[
-    {k:'name',label:'Namn',req:true},
+    {k:'name',label:'Namn (helt)',req:true,reqIfNoName:true},
+    {k:'firstname',label:'Förnamn (separat)',req:false,reqIfNoName:true},
+    {k:'lastname',label:'Efternamn (separat)',req:false,reqIfNoName:true},
     {k:'ssn',label:'Personnummer'},
     {k:'email',label:'E-post'},
     {k:'phone',label:'Telefon'},
     {k:'address',label:'Adress'},
+    {k:'city',label:'Stad/Ort'},
     {k:'saljare',label:'Säljare'},
     {k:'pkg',label:'Paket'},
     {k:'addon',label:'Tilläggstjänst'},
@@ -1882,6 +2010,11 @@ function showImportModal(){
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gt)" stroke-width="1.5" style="margin:0 auto;display:block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <p id="fdrop-text" style="font-size:13px;color:var(--mu);margin-top:.4rem;">Klicka för att välja .xlsx eller .csv-fil</p>
       <input type="file" id="xl-file" accept=".xlsx,.xls,.csv" style="display:none">
+    </div>
+
+    <div style="margin-bottom:1rem;padding:9px 11px;background:var(--bg2);border:1px solid var(--br);border-radius:8px;display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="imp-noheader" style="width:14px;height:14px;cursor:pointer;accent-color:var(--g);">
+      <label for="imp-noheader" style="font-size:12px;cursor:pointer;font-weight:500;">Filen saknar rubrikrad – första raden är data</label>
     </div>
 
     <div id="map-section" style="display:none;">
@@ -1926,25 +2059,59 @@ function showImportModal(){
         const wb=XLSX.read(ev.target.result,{type:'binary'});
         const ws=wb.Sheets[wb.SheetNames[0]];
         const data=XLSX.utils.sheet_to_json(ws,{header:1});
-        headers=(data[0]||[]).map(h=>String(h));
-        rows=data.slice(1).filter(r=>r.some(c=>c!=null&&c!==''));
+        const noHeader=ov.querySelector('#imp-noheader').checked;
+        
+        if(noHeader){
+          // No header row - generate column names "Kolumn 1", "Kolumn 2"...
+          const numCols=Math.max(...data.map(r=>r.length));
+          headers=Array.from({length:numCols},(_,i)=>'Kolumn '+(i+1));
+          rows=data.filter(r=>r.some(c=>c!=null&&c!==''));
+        } else {
+          headers=(data[0]||[]).map(h=>String(h));
+          rows=data.slice(1).filter(r=>r.some(c=>c!=null&&c!==''));
+        }
 
         // Auto-match columns
         const autoMap={
-          name:['namn','name','förnamn','firstname','kund'],
+          name:['namn helt','helt namn','fullname','full_name','full name','kund'],
+          firstname:['förnamn','first','firstname','first_name','first name'],
+          lastname:['efternamn','efter','last','lastname','last_name','last name','surname'],
           ssn:['personnummer','ssn','pnr','person'],
           email:['email','e-post','epost','mail'],
-          phone:['telefon','phone','mobil','mobilnummer','tel'],
+          phone:['telefon','phone','mobil','mobilnummer','tel','telefonnummer'],
           address:['adress','address','gata'],
-          saljare:['säljare','saljare','seller','agent'],
-          pkg:['paket','package','plan'],
-          addon:['tillägg','tillagg','addon','extra']
+          city:['stad','ort','city','postort'],
+          saljare:['säljare','saljare','seller','agent','last contacted by','last contacted','contacted by','last contact'],
+          pkg:['paket','package','plan','välj paket'],
+          addon:['tillägg','tillagg','addon','extra','tilläggstjänst']
         };
         mapping={};
-        CRM_FIELDS.forEach(f=>{
-          const h=headers.findIndex(hh=>(autoMap[f.k]||[]).some(kw=>hh.toLowerCase().includes(kw)));
-          if(h>=0)mapping[f.k]=h;
-        });
+        if(!noHeader){
+          CRM_FIELDS.forEach(f=>{
+            // Try exact match first, then partial
+            let h=headers.findIndex(hh=>(autoMap[f.k]||[]).some(kw=>hh.toLowerCase()===kw));
+            if(h<0) h=headers.findIndex(hh=>(autoMap[f.k]||[]).some(kw=>hh.toLowerCase().includes(kw)));
+            if(h>=0)mapping[f.k]=h;
+          });
+        }
+        // Smart fallback: if no mapping found, try to detect column types from data
+        if(!noHeader && Object.keys(mapping).length===0 || noHeader){
+          // Try to auto-detect by content
+          for(let i=0;i<headers.length;i++){
+            const samples=rows.slice(0,5).map(r=>String(r[i]||'').trim()).filter(x=>x);
+            if(samples.length===0) continue;
+            const allEmail=samples.every(s=>s.includes('@'));
+            const allNum=samples.every(s=>/^[\d\s\-+]+$/.test(s));
+            const allLong=samples.every(s=>s.length===10||s.length===12||s.length===13);
+            const allPnr=samples.every(s=>/^(19|20)?\d{6,8}[-]?\d{4}$/.test(s.replace(/\s/g,'')));
+            const allPkg=samples.every(s=>/^(singel|par|familj)$/i.test(s));
+            
+            if(allEmail && mapping.email===undefined) mapping.email=i;
+            else if(allPnr && mapping.ssn===undefined) mapping.ssn=i;
+            else if(allNum && allLong && mapping.phone===undefined) mapping.phone=i;
+            else if(allPkg && mapping.pkg===undefined) mapping.pkg=i;
+          }
+        }
 
         // Render mapping UI
         const grid=ov.querySelector('#map-grid');
@@ -1961,6 +2128,12 @@ function showImportModal(){
           });
           grid.appendChild(row);
         });
+        
+        // Help text about name fields
+        const help=document.createElement('div');
+        help.style.cssText='grid-column:1/-1;font-size:11px;color:var(--mu);font-style:italic;padding:6px 0;';
+        help.innerHTML='💡 Använd antingen <b>Namn (helt)</b> ELLER <b>Förnamn + Efternamn</b> (kombineras automatiskt)';
+        grid.appendChild(help);
 
         // Preview table
         const pw=ov.querySelector('#prev-wrap');
@@ -1981,7 +2154,14 @@ function showImportModal(){
   ov.addEventListener('click',e=>{if(e.target===ov)closeM();});
 
   ov.querySelector('#imp-do').addEventListener('click',async()=>{
-    if(mapping.name===undefined){alert('Du måste matcha kolumnen Namn (obligatoriskt).');return;}
+    // Allow either 'name' OR ('firstname' + 'lastname')
+    const hasFullName=mapping.name!==undefined;
+    const hasParts=mapping.firstname!==undefined && mapping.lastname!==undefined;
+    if(!hasFullName && !hasParts){
+      alert('Du måste matcha antingen "Namn (helt)" ELLER både "Förnamn (separat)" + "Efternamn (separat)".');
+      return;
+    }
+    
     const isLegacy=ov.querySelector('input[name="imp-type"]:checked').value==='legacy';
     const pkgMap={singel:'singel',par:'par',familj:'familj','1':'singel','2':'par','3':'familj','189':'singel','229':'par','279':'familj'};
     const addonMap={singel:true,par:true,familj:true,'doldadress singel':true,'doldadress par':true,'doldadress familj':true,'tilläggstjänst singel':true,'tilläggstjänst par':true,'tilläggstjänst familj':true,none:false,'':false,ingen:false,nej:false};
@@ -1993,16 +2173,36 @@ function showImportModal(){
     res.style.color='var(--gd)';
     
     let added=0,skipped=0,failed=0;
+    const failedDetails=[];
+    const unknownSellers=new Set();
     
     for(let i=0;i<rows.length;i++){
       const row=rows[i];
       const get=k=>mapping[k]!==undefined?String(row[mapping[k]]||'').trim():'';
-      const name=get('name');
+      
+      // Build name from either full or parts
+      let name='';
+      if(hasFullName){
+        name=get('name');
+      } else {
+        const fn=get('firstname'),ln=get('lastname');
+        name=(fn+' '+ln).trim();
+      }
+      
       if(!name){skipped++;continue;}
       
-      // Match seller name to seller ID
+      // Combine address + city if both provided
+      let address=get('address');
+      const city=get('city');
+      if(city) address=address?address+', '+city:city;
+      
+      // Match seller name to seller ID - track unknown sellers
       const sellerName=get('saljare');
-      const seller=sellerName?SELLERS.find(s=>s.name.toLowerCase()===sellerName.toLowerCase()):null;
+      let seller=null;
+      if(sellerName){
+        seller=SELLERS.find(s=>s.name.toLowerCase()===sellerName.toLowerCase());
+        if(!seller) unknownSellers.add(sellerName);
+      }
       
       const pkgRaw=get('pkg').toLowerCase();
       const addonRaw=get('addon').toLowerCase();
@@ -2012,7 +2212,7 @@ function showImportModal(){
         ssn:get('ssn'),
         email:get('email'),
         phone:normalizePhone(get('phone')),
-        address:get('address'),
+        address:address,
         seller_id:seller?seller.id:null,
         package_type:pkgMap[pkgRaw]||'singel',
         has_addon:addonMap[addonRaw]||false,
@@ -2025,9 +2225,9 @@ function showImportModal(){
       
       // Save to Supabase
       const saved=await createCustomer(newCustomer);
-      if(!saved){failed++;continue;}
+      if(!saved){failed++;failedDetails.push(name);continue;}
       
-      saved._seller_name=seller?seller.name:'';
+      saved._seller_name=seller?seller.name:sellerName||'';
       C.unshift(dbRowToCustomer(saved));
       added++;
       
@@ -2039,8 +2239,12 @@ function showImportModal(){
     
     impDo.disabled=false;
     impDo.textContent='Importera';
-    res.textContent='✓ '+added+' kunder importerade som '+(isLegacy?'befintliga':'nya sälj')+'.'+(skipped>0?' '+skipped+' rader hoppades över (saknar namn).':'')+(failed>0?' '+failed+' misslyckades (kolla konsolen).':'');
-    setTimeout(()=>{closeM();render();},2500);
+    let msg='✓ '+added+' kunder importerade som '+(isLegacy?'befintliga':'nya sälj')+'.';
+    if(skipped>0) msg+=' '+skipped+' rader hoppades över (saknar namn).';
+    if(failed>0) msg+=' ⚠️ '+failed+' misslyckades.';
+    if(unknownSellers.size>0) msg+=' 📌 Okända säljare (kunder sparades utan säljare-koppling): '+Array.from(unknownSellers).join(', ');
+    res.textContent=msg;
+    if(failed===0 && unknownSellers.size===0) setTimeout(()=>{closeM();render();},2500);
   });
 
   mc.appendChild(ov);
