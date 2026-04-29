@@ -747,18 +747,25 @@ function buildX(c){
       <div style="flex-shrink:0;"><div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;">Bindningstid (${bind.months} mån)</div><div style="font-size:13px;font-weight:600;margin-top:1px;">${bind.done?'Ingen bindningstid':bind.label}</div></div>
       <div class="pbw"><div class="pb" style="width:${bind.pct}%"></div></div>
       <span style="font-size:11px;color:var(--mu);flex-shrink:0;">${bind.pct}%</span>
+      <button class="btn bs bxs" id="edit-info-${c.id}" style="margin-left:auto;flex-shrink:0;">✏️ Redigera uppgifter</button>
     </div>
     <div class="igrid">
+      <div class="ii"><label>Namn</label><span>${esc(c.name)}</span></div>
       <div class="ii"><label>Personnummer</label><span>${c.ssn||'–'}</span></div>
       <div class="ii"><label>Telefon</label><span>${c.phone||'–'}</span></div>
       <div class="ii"><label>E-post</label><span>${c.email||'–'}</span></div>
       <div class="ii"><label>Adress</label><span>${c.address||'–'}</span></div>
       <div class="ii"><label>Säljare</label><span>${c.saljare||'–'}</span></div>
       <div class="ii"><label>Paket</label><span>${pl(c.pkg)}</span></div>
-      <div class="ii"><label>Tilläggstjänst</label><span>${al(c.addon)}</span></div>
       <div class="ii"><label>Kund sedan</label><span>${new Date(c.created_at).toLocaleDateString('sv-SE')}</span></div>
     </div>
   `;
+
+  // Edit-knapp
+  xi.querySelector(`#edit-info-${c.id}`).addEventListener('click',(e)=>{
+    e.stopPropagation();
+    showEditCustomerModal(c);
+  });
 
   // PAKETBYTE
   const ps=mkSec('📦 Byta paket eller tilläggstjänst',`
@@ -1079,6 +1086,93 @@ function mkSec(title,bodyHtml){
 }
 
 // CONFIRM
+function showEditCustomerModal(c){
+  const mc=document.getElementById('mc');mc.innerHTML='';
+  const ov=document.createElement('div');ov.className='overlay';
+  
+  const sellerOpts=`<option value="">-- Välj säljare --</option>`+SELLERS.map(s=>`<option value="${s.id}" ${c.saljare===s.name?'selected':''}>${esc(s.name)}</option>`).join('');
+  
+  ov.innerHTML=`<div class="mdl" style="max-width:520px;">
+    <h2>✏️ Redigera kunduppgifter</h2>
+    <p style="font-size:12px;color:var(--mu);margin-bottom:1rem;">Ändringar sparas direkt och loggas i ändringsloggen.</p>
+    
+    <div class="fg" style="margin-bottom:10px;"><label>Namn *</label><input id="ec-name" type="text" value="${esc(c.name||'')}" style="width:100%;padding:8px 10px;border:1px solid var(--br);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none;"></div>
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="fg"><label>Personnummer</label><input id="ec-ssn" type="text" value="${esc(c.ssn||'')}" placeholder="ÅÅÅÅMMDD-XXXX" style="width:100%;padding:8px 10px;border:1px solid var(--br);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none;"></div>
+      <div class="fg"><label>Telefon</label><input id="ec-phone" type="text" value="${esc(c.phone||'')}" placeholder="+46..." style="width:100%;padding:8px 10px;border:1px solid var(--br);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none;"></div>
+    </div>
+    
+    <div class="fg" style="margin-bottom:10px;"><label>E-post</label><input id="ec-email" type="email" value="${esc(c.email||'')}" style="width:100%;padding:8px 10px;border:1px solid var(--br);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none;"></div>
+    
+    <div class="fg" style="margin-bottom:10px;"><label>Adress</label><input id="ec-address" type="text" value="${esc(c.address||'')}" style="width:100%;padding:8px 10px;border:1px solid var(--br);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none;"></div>
+    
+    <div class="fg" style="margin-bottom:1rem;"><label>Säljare</label><select id="ec-seller" style="width:100%;padding:8px 10px;border:1px solid var(--br);border-radius:8px;font-size:13px;background:var(--bg);color:var(--tx);outline:none;">${sellerOpts}</select></div>
+    
+    <div id="ec-status" style="font-size:13px;margin:10px 0;display:none;"></div>
+    
+    <div class="mdla">
+      <button class="btn bs" id="ec-cancel">Avbryt</button>
+      <button class="btn bp" id="ec-save">💾 Spara ändringar</button>
+    </div>
+  </div>`;
+  
+  ov.querySelector('#ec-cancel').addEventListener('click',closeM);
+  ov.addEventListener('click',e=>{if(e.target===ov)closeM();});
+  
+  ov.querySelector('#ec-save').addEventListener('click',async()=>{
+    const newName=ov.querySelector('#ec-name').value.trim();
+    const newSsn=ov.querySelector('#ec-ssn').value.trim();
+    const newPhone=normalizePhone(ov.querySelector('#ec-phone').value.trim());
+    const newEmail=ov.querySelector('#ec-email').value.trim();
+    const newAddress=ov.querySelector('#ec-address').value.trim();
+    const newSellerId=ov.querySelector('#ec-seller').value||null;
+    const newSellerName=newSellerId?SELLERS.find(s=>s.id===newSellerId)?.name||'':'';
+    
+    if(!newName){alert('Namn är obligatoriskt.');return;}
+    
+    const saveBtn=ov.querySelector('#ec-save');
+    saveBtn.disabled=true;saveBtn.textContent='Sparar...';
+    const stEl=ov.querySelector('#ec-status');
+    
+    // Build updates object - only include fields that changed
+    const updates={};
+    const changes=[];
+    if(newName!==c.name){updates.full_name=newName;changes.push({field:'Namn',from:c.name||'',to:newName});}
+    if(newSsn!==(c.ssn||'')){updates.ssn=newSsn;changes.push({field:'Personnummer',from:c.ssn||'',to:newSsn});}
+    if(newPhone!==(c.phone||'')){updates.phone=newPhone;changes.push({field:'Telefon',from:c.phone||'',to:newPhone});}
+    if(newEmail!==(c.email||'')){updates.email=newEmail;changes.push({field:'E-post',from:c.email||'',to:newEmail});}
+    if(newAddress!==(c.address||'')){updates.address=newAddress;changes.push({field:'Adress',from:c.address||'',to:newAddress});}
+    if(newSellerName!==(c.saljare||'')){updates.seller_id=newSellerId;changes.push({field:'Säljare',from:c.saljare||'',to:newSellerName});}
+    
+    if(changes.length===0){
+      stEl.textContent='Inga ändringar att spara.';stEl.style.color='var(--mu)';stEl.style.display='block';
+      saveBtn.disabled=false;saveBtn.textContent='💾 Spara ändringar';
+      return;
+    }
+    
+    const updated=await updateCustomer(c.id,updates);
+    if(!updated){
+      stEl.textContent='⚠️ Kunde inte spara. Försök igen.';stEl.style.color='var(--err)';stEl.style.display='block';
+      saveBtn.disabled=false;saveBtn.textContent='💾 Spara ändringar';
+      return;
+    }
+    
+    // Update local state
+    c.name=newName;c.ssn=newSsn;c.phone=newPhone;c.email=newEmail;c.address=newAddress;c.saljare=newSellerName;
+    
+    // Log all changes to changelog
+    for(const ch of changes){
+      await logChange(c.id,c.name,ch.field,ch.from,ch.to);
+    }
+    
+    stEl.textContent=`✓ ${changes.length} ${changes.length===1?'ändring sparad':'ändringar sparade'}!`;stEl.style.color='var(--g)';stEl.style.display='block';
+    setTimeout(()=>{closeM();render();},1200);
+  });
+  
+  mc.appendChild(ov);
+}
+
 function showConfirm(type,c){
   const mc=document.getElementById('mc');mc.innerHTML='';
   
