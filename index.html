@@ -1970,9 +1970,8 @@ function showImportModal(){
   const mc=document.getElementById('mc');mc.innerHTML='';
   let headers=[],rows=[],mapping={};
   const CRM_FIELDS=[
-    {k:'name',label:'Namn (helt)',req:true,reqIfNoName:true},
-    {k:'firstname',label:'Förnamn (separat)',req:false,reqIfNoName:true},
-    {k:'lastname',label:'Efternamn (separat)',req:false,reqIfNoName:true},
+    {k:'firstname',label:'Förnamn',req:true},
+    {k:'lastname',label:'Efternamn',req:true},
     {k:'ssn',label:'Personnummer'},
     {k:'email',label:'E-post'},
     {k:'phone',label:'Telefon'},
@@ -2128,12 +2127,6 @@ function showImportModal(){
           });
           grid.appendChild(row);
         });
-        
-        // Help text about name fields
-        const help=document.createElement('div');
-        help.style.cssText='grid-column:1/-1;font-size:11px;color:var(--mu);font-style:italic;padding:6px 0;';
-        help.innerHTML='💡 Använd antingen <b>Namn (helt)</b> ELLER <b>Förnamn + Efternamn</b> (kombineras automatiskt)';
-        grid.appendChild(help);
 
         // Preview table
         const pw=ov.querySelector('#prev-wrap');
@@ -2154,11 +2147,8 @@ function showImportModal(){
   ov.addEventListener('click',e=>{if(e.target===ov)closeM();});
 
   ov.querySelector('#imp-do').addEventListener('click',async()=>{
-    // Allow either 'name' OR ('firstname' + 'lastname')
-    const hasFullName=mapping.name!==undefined;
-    const hasParts=mapping.firstname!==undefined && mapping.lastname!==undefined;
-    if(!hasFullName && !hasParts){
-      alert('Du måste matcha antingen "Namn (helt)" ELLER både "Förnamn (separat)" + "Efternamn (separat)".');
+    if(mapping.firstname===undefined || mapping.lastname===undefined){
+      alert('Du måste matcha både "Förnamn" och "Efternamn".');
       return;
     }
     
@@ -2180,15 +2170,8 @@ function showImportModal(){
       const row=rows[i];
       const get=k=>mapping[k]!==undefined?String(row[mapping[k]]||'').trim():'';
       
-      // Build name from either full or parts
-      let name='';
-      if(hasFullName){
-        name=get('name');
-      } else {
-        const fn=get('firstname'),ln=get('lastname');
-        name=(fn+' '+ln).trim();
-      }
-      
+      const fn=get('firstname'),ln=get('lastname');
+      const name=(fn+' '+ln).trim();
       if(!name){skipped++;continue;}
       
       // Combine address + city if both provided
@@ -2231,7 +2214,6 @@ function showImportModal(){
       C.unshift(dbRowToCustomer(saved));
       added++;
       
-      // Update progress every 5 records
       if((i+1)%5===0){
         res.textContent=`Importerar... ${i+1} / ${rows.length} klart (${added} sparade, ${failed} fel)`;
       }
