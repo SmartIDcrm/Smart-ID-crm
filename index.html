@@ -219,6 +219,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     </nav>
     <div class="sbf">
       <div class="sbsy"><div class="sdot"></div><span>Inloggad: admin</span></div>
+      <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,.04);border-radius:6px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.7);margin-bottom:6px;" title="Slå på/av automatiska välkomstmail">
+        <input type="checkbox" id="automail-toggle" style="cursor:pointer;">
+        <span>📧 Auto-mail vid ny kund</span>
+      </label>
       <button class="logout-btn" id="logout-btn">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/><path d="M11 11l3-3-3-3"/><line x1="14" y1="8" x2="6" y2="8"/></svg>
         <span>Logga ut</span>
@@ -1195,9 +1199,69 @@ function showAdd(){
     const seller=SELLERS.find(s=>s.id===sellerId);
     saved._seller_name=seller?seller.name:'';
     C.unshift(dbRowToCustomer(saved));
+    
+    // Send welcome email if customer has email and auto-mail is enabled
+    if(saved.email && isAutoMailEnabled()){
+      saveBtn.textContent='Skickar mail...';
+      try {
+        await sendWelcomeEmail(saved);
+      } catch(err){
+        console.warn('Welcome mail failed (non-fatal):',err);
+      }
+    }
+    
     closeM();render();
   });
   mc.appendChild(ov);
+}
+
+// ============================================================================
+// RESEND MAIL INTEGRATION
+// ============================================================================
+
+// Toggle auto-mail on/off – stored in localStorage so it persists per user
+function isAutoMailEnabled(){
+  return localStorage.getItem('smartid_automail') !== 'off';
+}
+function setAutoMailEnabled(on){
+  localStorage.setItem('smartid_automail', on?'on':'off');
+}
+
+// Send welcome email via Edge Function
+async function sendWelcomeEmail(customer){
+  try {
+    const {data:{session}}=await sb.auth.getSession();
+    const token=session?.access_token;
+    if(!token){console.warn('No session token for mail send');return false;}
+    
+    const response=await fetch(`${SUPABASE_URL}/functions/v1/send-welcome-email`,{
+      method:'POST',
+      headers:{
+        'Authorization':`Bearer ${token}`,
+        'Content-Type':'application/json',
+        'apikey':SUPABASE_KEY
+      },
+      body:JSON.stringify({
+        customerId:customer.id,
+        fullName:customer.full_name,
+        email:customer.email,
+        packageType:customer.package_type,
+        hasAddon:customer.has_addon,
+        bindingMonths:customer.binding_months
+      })
+    });
+    
+    const result=await response.json();
+    if(!response.ok){
+      console.error('Mail send failed:',result);
+      return false;
+    }
+    console.log('Welcome mail sent:',result.resendId);
+    return true;
+  } catch(err){
+    console.error('sendWelcomeEmail error:',err);
+    return false;
+  }
 }
 
 // STATISTIK
@@ -1817,6 +1881,13 @@ async function showApp(){
   // Show user email + role in sidebar
   const userEl=document.querySelector('.sbu');
   if(userEl) userEl.textContent=currentUser.email+' ('+currentUser.role+')';
+  
+  // Wire auto-mail toggle
+  const toggleEl=document.getElementById('automail-toggle');
+  if(toggleEl){
+    toggleEl.checked=isAutoMailEnabled();
+    toggleEl.onchange=()=>setAutoMailEnabled(toggleEl.checked);
+  }
   
   // Setup realtime sync
   setupRealtime();
