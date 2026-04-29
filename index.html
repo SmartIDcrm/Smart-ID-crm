@@ -2016,6 +2016,11 @@ function showImportModal(){
       <label for="imp-noheader" style="font-size:12px;cursor:pointer;font-weight:500;">Filen saknar rubrikrad – första raden är data</label>
     </div>
 
+    <div style="margin-bottom:1rem;padding:9px 11px;background:var(--bg2);border:1px solid var(--br);border-radius:8px;display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="imp-autoseller" checked style="width:14px;height:14px;cursor:pointer;accent-color:var(--g);">
+      <label for="imp-autoseller" style="font-size:12px;cursor:pointer;font-weight:500;">Skapa nya säljare automatiskt om de inte finns</label>
+    </div>
+
     <div id="map-section" style="display:none;">
       <p style="font-size:12px;color:var(--mu);margin-bottom:8px;font-weight:600;">Matcha Excel-kolumner mot CRM-fält:</p>
       <div id="map-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem;"></div>
@@ -2153,6 +2158,7 @@ function showImportModal(){
     }
     
     const isLegacy=ov.querySelector('input[name="imp-type"]:checked').value==='legacy';
+    const autoCreateSellers=ov.querySelector('#imp-autoseller').checked;
     const pkgMap={singel:'singel',par:'par',familj:'familj','1':'singel','2':'par','3':'familj','189':'singel','229':'par','279':'familj'};
     const addonMap={singel:true,par:true,familj:true,'doldadress singel':true,'doldadress par':true,'doldadress familj':true,'tilläggstjänst singel':true,'tilläggstjänst par':true,'tilläggstjänst familj':true,none:false,'':false,ingen:false,nej:false};
     
@@ -2162,9 +2168,36 @@ function showImportModal(){
     res.style.display='block';
     res.style.color='var(--gd)';
     
+    // STEP 1: Pre-scan for unknown sellers
+    if(autoCreateSellers && mapping.saljare!==undefined){
+      const sellersInFile=new Set();
+      rows.forEach(row=>{
+        const sn=String(row[mapping.saljare]||'').trim();
+        if(sn) sellersInFile.add(sn);
+      });
+      const newSellersToCreate=[];
+      for(const sn of sellersInFile){
+        if(!SELLERS.find(s=>s.name.toLowerCase()===sn.toLowerCase())){
+          newSellersToCreate.push({name:sn,active:true});
+        }
+      }
+      if(newSellersToCreate.length>0){
+        res.textContent=`Skapar ${newSellersToCreate.length} nya säljare: ${newSellersToCreate.map(s=>s.name).join(', ')}...`;
+        const {data:created,error:sellerErr}=await sb.from('sellers').insert(newSellersToCreate).select();
+        if(sellerErr){
+          alert('Kunde inte skapa nya säljare: '+sellerErr.message);
+          impDo.disabled=false;impDo.textContent='Importera';
+          return;
+        }
+        // Lägg till i lokala SELLERS-listan
+        if(created) SELLERS.push(...created);
+      }
+    }
+    
     let added=0,skipped=0,failed=0;
     const failedDetails=[];
     const unknownSellers=new Set();
+    const createdSellers=new Set();
     
     for(let i=0;i<rows.length;i++){
       const row=rows[i];
@@ -2179,12 +2212,17 @@ function showImportModal(){
       const city=get('city');
       if(city) address=address?address+', '+city:city;
       
-      // Match seller name to seller ID - track unknown sellers
+      // Match seller name to seller ID
       const sellerName=get('saljare');
       let seller=null;
       if(sellerName){
         seller=SELLERS.find(s=>s.name.toLowerCase()===sellerName.toLowerCase());
-        if(!seller) unknownSellers.add(sellerName);
+        if(!seller){
+          unknownSellers.add(sellerName);
+        } else if(autoCreateSellers && !SELLERS.find(s=>s.name===sellerName && SELLERS.indexOf(s)<SELLERS.length-rows.length)){
+          // Tracking that this seller was newly created
+          createdSellers.add(sellerName);
+        }
       }
       
       const pkgRaw=get('pkg').toLowerCase();
@@ -2206,7 +2244,6 @@ function showImportModal(){
         legacy:isLegacy
       };
       
-      // Save to Supabase
       const saved=await createCustomer(newCustomer);
       if(!saved){failed++;failedDetails.push(name);continue;}
       
