@@ -175,6 +175,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .logout-btn{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;background:transparent;border:none;color:rgba(255,255,255,.45);font-size:12px;cursor:pointer;border-radius:6px;transition:all .2s;margin-top:.5rem;font-family:inherit;}
 .logout-btn:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);}
 @media(max-width:680px){:root{--sb:52px;}.sbi span,.sbsc,.sbu,.sbdg{display:none;}.sbi{justify-content:center;padding:10px;}.sbh{padding:.7rem .4rem;}.ca{padding:.7rem .9rem;}}
+/* === SELLER PILL (i kundlistan) === */
+.seller-pill{display:inline-block;padding:2px 8px;background:var(--bg2);color:var(--gd);border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid var(--br);}
 /* === AUDIO PLAYER (kundkort) === */
 .audio-player{display:flex;align-items:center;gap:5px;background:var(--bg2);border-radius:7px;padding:5px 7px;}
 .audio-play-btn{background:var(--g);color:#fff;border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .15s;}
@@ -714,7 +716,7 @@ function refreshT(){
   items.forEach(c=>{
     const bind=calcBind(c),isOpen=S.openId===c.id;
     const tr=document.createElement('tr');tr.className='dr'+(isOpen?' ro':'');
-    tr.innerHTML=`<td class="tn">${esc(c.name)}</td><td class="tmo">${c.ssn||'–'}</td><td class="tmu">${c.email||'–'}</td><td class="tmu">${c.phone||'–'}</td><td class="tmu" style="max-width:130px;overflow:hidden;text-overflow:ellipsis;padding-right:24px;">${c.address||'–'}</td><td class="tmu" style="padding-left:16px;border-left:1px solid var(--bg2);">${c.saljare||'–'}</td><td><span class="bdg ${pc(c.pkg)}">${pl(c.pkg)}</span>${c.addon&&c.addon!=='none'?' <span class="bdg bad" style="font-size:10px;">+TILL</span>':''}</td><td><span style="font-size:12px;color:var(--mu);">Aktiv</span></td><td><span class="bpill ${bind.done?'bof':'bon'}">${bind.done?'✓ Klar':'⏱ '+bind.label}</span></td><td><button class="hrt ${c.favorite?'hon':'hof'}" data-id="${c.id}">♥</button></td>`;
+    tr.innerHTML=`<td class="tn">${esc(c.name)}</td><td class="tmo">${c.ssn||'–'}</td><td class="tmu">${c.email||'–'}</td><td class="tmu">${c.phone||'–'}</td><td class="tmu" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:16px;" title="${esc(c.address||'')}">${c.address||'–'}</td><td style="padding-left:8px;"><span class="seller-pill">${c.saljare||'–'}</span></td><td><span class="bdg ${pc(c.pkg)}">${pl(c.pkg)}</span>${c.addon&&c.addon!=='none'?' <span class="bdg bad" style="font-size:10px;">+TILL</span>':''}</td><td><span style="font-size:12px;color:var(--mu);">Aktiv</span></td><td><span class="bpill ${bind.done?'bof':'bon'}">${bind.done?'✓ Klar':'⏱ '+bind.label}</span></td><td><button class="hrt ${c.favorite?'hon':'hof'}" data-id="${c.id}">♥</button></td>`;
     tr.querySelector('.hrt').addEventListener('click',e=>{
       e.stopPropagation();
       c.favorite=!c.favorite;
