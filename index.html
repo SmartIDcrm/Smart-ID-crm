@@ -291,21 +291,21 @@ function customerToDbRow(c){
   // Convert internal format back to DB column names
   const statusMap={aktiv:'active',anger:'angrad',makulering:'makulerad',bortfall:'makulerad',raderad:'raderad'};
   return {
-    full_name:c.name,
-    personal_number:c.ssn||null,
+    full_name:c.name||c.full_name,
+    personal_number:c.ssn||c.personal_number||null,
     phone:c.phone||null,
     email:c.email||null,
     address:c._address_raw||c.address||null,
-    postal_code:c._postal_code||null,
-    city:c._city||null,
+    postal_code:c._postal_code||c.postal_code||null,
+    city:c._city||c.city||null,
     seller_id:c.seller_id||null,
-    package_type:c.pkg||null,
+    package_type:c.pkg||c.package_type||null,
     package_tier:c.pkg_tier||'premium',
-    has_addon:c.addon&&c.addon!=='none',
-    binding_months:c.bind_months||0,
-    binding_start_date:c.bind_start?c.bind_start.split('T')[0]:null,
-    is_existing_customer:c.legacy||false,
-    status:statusMap[c.status]||'active'
+    has_addon:c.has_addon!==undefined?c.has_addon:(c.addon&&c.addon!=='none'),
+    binding_months:c.bind_months!==undefined?c.bind_months:(c.binding_months||0),
+    binding_start_date:(c.bind_start||c.binding_start_date)?(c.bind_start||c.binding_start_date).split('T')[0]:null,
+    is_existing_customer:c.legacy!==undefined?c.legacy:(c.is_existing_customer||false),
+    status:statusMap[c.status]||c.status||'active'
   };
 }
 
@@ -2229,14 +2229,14 @@ function showImportModal(){
       const addonRaw=get('addon').toLowerCase();
       
       const newCustomer={
-        full_name:name,
+        name:name,
         ssn:get('ssn'),
         email:get('email'),
         phone:normalizePhone(get('phone')),
         address:address,
         seller_id:seller?seller.id:null,
-        package_type:pkgMap[pkgRaw]||'singel',
-        has_addon:addonMap[addonRaw]||false,
+        pkg:pkgMap[pkgRaw]||'singel',
+        addon:addonMap[addonRaw]?(pkgMap[pkgRaw]||'singel'):'none',
         bind_months:isLegacy?0:12,
         bind_start:new Date().toISOString(),
         status:'aktiv',
