@@ -175,6 +175,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .logout-btn{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;background:transparent;border:none;color:rgba(255,255,255,.45);font-size:12px;cursor:pointer;border-radius:6px;transition:all .2s;margin-top:.5rem;font-family:inherit;}
 .logout-btn:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);}
 @media(max-width:680px){:root{--sb:52px;}.sbi span,.sbsc,.sbu,.sbdg{display:none;}.sbi{justify-content:center;padding:10px;}.sbh{padding:.7rem .4rem;}.ca{padding:.7rem .9rem;}}
+/* === AUDIO PLAYER (kundkort) === */
+.audio-player{display:flex;align-items:center;gap:5px;background:var(--bg2);border-radius:7px;padding:5px 7px;}
+.audio-play-btn{background:var(--g);color:#fff;border:none;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .15s;}
+.audio-play-btn:hover{background:var(--gd);}
+.audio-rewind-btn,.audio-forward-btn{background:var(--w);border:1px solid var(--br);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--g);flex-shrink:0;transition:all .15s;}
+.audio-rewind-btn:hover,.audio-forward-btn:hover{background:var(--g);color:#fff;}
+.audio-time-wrap{display:flex;align-items:center;gap:4px;flex:1;min-width:0;}
+.audio-time-current,.audio-time-total{font-size:10px;color:var(--mu);font-variant-numeric:tabular-nums;flex-shrink:0;}
+.audio-progress{flex:1;height:5px;background:rgba(0,0,0,.1);border-radius:3px;cursor:pointer;overflow:hidden;}
+.audio-progress-bar{height:100%;background:var(--g);width:0%;transition:width .1s linear;}
 </style>
 </head>
 <body>
@@ -358,43 +368,129 @@ async function permanentDeleteCustomer(id){
 
 // Setup realtime subscription so all logged-in users see updates live
 function setupRealtime(){
-  if(realtimeChannel) return; // already set up
+  if(realtimeChannel) return;
   realtimeChannel=sb.channel('customers-changes')
     .on('postgres_changes',{event:'*',schema:'public',table:'customers'},async(payload)=>{
-      console.log('Realtime change:',payload);
-      // Save current local notes/changes before reload (Iteration 1 stores them client-side only)
-      const localCache={};
-      C.forEach(c=>{
-        localCache[c.id]={notes:c.notes||[], changes:c.changes||[], favorite:c.favorite||false};
-      });
-      
+      const prevOpenId=S.openId;
       await loadFromSupabase();
-      
-      // Restore local notes/changes after reload
-      C.forEach(c=>{
-        if(localCache[c.id]){
-          c.notes=localCache[c.id].notes;
-          c.changes=localCache[c.id].changes;
-          c.favorite=localCache[c.id].favorite;
-        }
-      });
-      
+      if(prevOpenId) await loadCustomerDetail(prevOpenId);
       render();
     })
     .subscribe((status)=>{
-      // Update connection indicator
       const ind=document.getElementById('conn-indicator');
       if(ind){
-        if(status==='SUBSCRIBED'){
-          ind.textContent='🟢 Live';
-          ind.title='Ansluten – ändringar syns direkt';
-        } else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
-          ind.textContent='🔴 Offline';
-          ind.title='Anslutning bruten – ladda om sidan';
-        }
+        if(status==='SUBSCRIBED'){ind.textContent='🟢 Live';ind.title='Ansluten – ändringar syns direkt';}
+        else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){ind.textContent='🔴 Offline';ind.title='Anslutning bruten – ladda om sidan';}
       }
     });
 }
+
+// ============================================================================
+// ITERATION 2 – NOTES, CHANGELOG, AUDIO
+// ============================================================================
+
+// Lazy-load notes + changelog + audio when a customer card opens
+async function loadCustomerDetail(customerId){
+  const c=C.find(x=>x.id===customerId);
+  if(!c) return;
+  try {
+    const [{data:notes},{data:changelog},{data:audio}]=await Promise.all([
+      sb.from('notes').select('*').eq('customer_id',customerId).order('created_at',{ascending:false}),
+      sb.from('changelog').select('*').eq('customer_id',customerId).order('changed_at',{ascending:false}),
+      sb.from('audio_files').select('*').eq('customer_id',customerId).eq('context','customer').limit(1).maybeSingle()
+    ]);
+    c.notes=(notes||[]).map(n=>({id:n.id,t:n.content,d:new Date(n.created_at).toLocaleString('sv-SE',{dateStyle:'short',timeStyle:'short'}),by:n.created_by_name||''}));
+    c.changes=(changelog||[]).map(ch=>({id:ch.id,field:ch.field_name||ch.action,from:ch.old_value||'',to:ch.new_value||ch.description||'',d:new Date(ch.changed_at).toLocaleString('sv-SE',{dateStyle:'short',timeStyle:'short'}),by:ch.changed_by_name||''}));
+    c._audio=audio||null;
+    c._detailLoaded=true;
+  } catch(e){console.error('loadCustomerDetail failed:',e);}
+}
+
+// Save note to Supabase
+async function saveNote(customerId, content){
+  const c=C.find(x=>x.id===customerId);
+  if(!c) return null;
+  const {data,error}=await sb.from('notes').insert({
+    customer_id:customerId,
+    content,
+    created_by:currentUser?.id||null,
+    created_by_name:currentUser?.email||''
+  }).select().single();
+  if(error){alert('Kunde inte spara anteckning: '+error.message);return null;}
+  if(!c.notes)c.notes=[];
+  c.notes.unshift({id:data.id,t:data.content,d:new Date(data.created_at).toLocaleString('sv-SE',{dateStyle:'short',timeStyle:'short'}),by:currentUser?.email||''});
+  return data;
+}
+
+// Log a change to changelog in Supabase
+async function logChange(customerId, customerName, fieldName, oldValue, newValue){
+  try {
+    const {data}=await sb.from('changelog').insert({
+      customer_id:customerId,
+      customer_name_snapshot:customerName,
+      action:'field_change',
+      field_name:fieldName,
+      old_value:String(oldValue||''),
+      new_value:String(newValue||''),
+      changed_by:currentUser?.id||null,
+      changed_by_name:currentUser?.email||''
+    }).select().single();
+    const c=C.find(x=>x.id===customerId);
+    if(c){
+      if(!c.changes)c.changes=[];
+      c.changes.unshift({id:data?.id,field:fieldName,from:String(oldValue||''),to:String(newValue||''),d:nowS(),by:currentUser?.email||''});
+    }
+  } catch(e){console.warn('logChange failed (non-fatal):',e);}
+}
+
+// Upload audio file for a customer to Supabase Storage
+async function uploadCustomerAudio(customerId, file){
+  const c=C.find(x=>x.id===customerId);
+  if(!c) return false;
+  try {
+    // Remove existing audio first
+    if(c._audio){
+      await sb.storage.from('audio-files').remove([c._audio.storage_path]);
+      await sb.from('audio_files').delete().eq('id',c._audio.id);
+      c._audio=null;
+    }
+    // Upload new file
+    const ext=file.name.split('.').pop()||'mp3';
+    const storagePath=`customer-audio/${customerId}/${Date.now()}.${ext}`;
+    const {error:uploadErr}=await sb.storage.from('audio-files').upload(storagePath,file,{contentType:file.type,upsert:true});
+    if(uploadErr) throw uploadErr;
+    // Save metadata
+    const {data,error:insertErr}=await sb.from('audio_files').insert({
+      context:'customer',customer_id:customerId,title:file.name,
+      storage_path:storagePath,file_size:file.size,mime_type:file.type,
+      uploaded_by:currentUser?.id||null
+    }).select().single();
+    if(insertErr) throw insertErr;
+    c._audio=data;
+    return true;
+  } catch(e){alert('Uppladdning misslyckades: '+e.message);return false;}
+}
+
+// Get signed URL for secure audio playback (1 hour validity)
+async function getAudioUrl(storagePath){
+  const {data,error}=await sb.storage.from('audio-files').createSignedUrl(storagePath,3600);
+  if(error){console.error('getAudioUrl failed:',error);return null;}
+  return data.signedUrl;
+}
+
+// Delete audio for a customer
+async function deleteCustomerAudio(customerId){
+  const c=C.find(x=>x.id===customerId);
+  if(!c||!c._audio) return false;
+  try {
+    await sb.storage.from('audio-files').remove([c._audio.storage_path]);
+    await sb.from('audio_files').delete().eq('id',c._audio.id);
+    c._audio=null;
+    return true;
+  } catch(e){alert('Kunde inte radera ljud: '+e.message);return false;}
+}
+
+
 
 let SELLERS=[];  // populated by loadFromSupabase
 
@@ -621,7 +717,17 @@ function refreshT(){
       // Iteration 2: spara till Supabase via favorite-kolumn
       render();
     });
-    tr.addEventListener('click',e=>{if(e.target.classList.contains('hrt'))return;S.openId=isOpen?null:c.id;refreshT();});
+    tr.addEventListener('click',e=>{
+      if(e.target.classList.contains('hrt'))return;
+      const newId=isOpen?null:c.id;
+      S.openId=newId;
+      // Lazy-load notes/changelog/audio from Supabase when card opens
+      if(newId && !c._detailLoaded){
+        loadCustomerDetail(newId).then(()=>refreshT());
+      } else {
+        refreshT();
+      }
+    });
     tb.appendChild(tr);
     if(isOpen)tb.appendChild(buildX(c));
   });
@@ -690,13 +796,8 @@ function buildX(c){
       has_addon:newAddon&&newAddon!=='none'
     });
     if(!updated) return;
-    if(!c.changes)c.changes=[];
-    if(newPkg!==c.pkg){
-      c.changes.unshift({field:'Paket',from:pl(c.pkg),to:pl(newPkg),d:nowS()});
-    }
-    if(newAddon!==c.addon){
-      c.changes.unshift({field:'Tilläggstjänst',from:al(c.addon),to:al(newAddon),d:nowS()});
-    }
+    if(newPkg!==c.pkg) await logChange(c.id,c.name,'Paket',pl(c.pkg),pl(newPkg));
+    if(newAddon!==c.addon) await logChange(c.id,c.name,'Tilläggstjänst',al(c.addon),al(newAddon));
     c.pkg=newPkg;c.addon=newAddon;
     const sv=ps.querySelector(`#pks-sv-${c.id}`);sv.style.opacity='1';
     setTimeout(()=>sv.style.opacity='0',2000);refreshT();
@@ -725,8 +826,7 @@ function buildX(c){
       const newMonths=(c.bind_months||0)+1;
       const updated=await updateCustomer(c.id,{binding_months:newMonths});
       if(!updated) return;
-      if(!c.changes)c.changes=[];
-      c.changes.unshift({field:'Bindningstid',from:(c.bind_months||0)+' mån',to:newMonths+' mån (+1)',d:nowS()});
+      await logChange(c.id,c.name,'Bindningstid',(c.bind_months||0)+' mån',newMonths+' mån (+1)');
       c.bind_months=newMonths;
       svb.style.opacity='1';setTimeout(()=>svb.style.opacity='0',2000);refreshT();
     } finally { e.target.disabled=false; }
@@ -740,8 +840,7 @@ function buildX(c){
       if(newMonths===c.bind_months) return;
       const updated=await updateCustomer(c.id,{binding_months:newMonths});
       if(!updated) return;
-      if(!c.changes)c.changes=[];
-      c.changes.unshift({field:'Bindningstid',from:(c.bind_months||0)+' mån',to:newMonths+' mån (−1)',d:nowS()});
+      await logChange(c.id,c.name,'Bindningstid',(c.bind_months||0)+' mån',newMonths+' mån (−1)');
       c.bind_months=newMonths;
       svb.style.opacity='1';setTimeout(()=>svb.style.opacity='0',2000);refreshT();
     } finally { e.target.disabled=false; }
@@ -753,8 +852,7 @@ function buildX(c){
       binding_start_date:new Date().toISOString().split('T')[0]
     });
     if(!updated) return;
-    if(!c.changes)c.changes=[];
-    c.changes.unshift({field:'Bindningstid',from:(c.bind_months||12)+' månader (gammal)',to:'12 månader (förnyad '+new Date().toLocaleDateString('sv-SE')+')',d:nowS()});
+    await logChange(c.id,c.name,'Bindningstid',(c.bind_months||12)+' månader','12 månader (förnyad '+new Date().toLocaleDateString('sv-SE')+')');
     c.bind_start=new Date().toISOString();c.bind_months=12;
     svb.style.opacity='1';setTimeout(()=>svb.style.opacity='0',2000);refreshT();
   });
@@ -765,8 +863,7 @@ function buildX(c){
       binding_start_date:new Date().toISOString().split('T')[0]
     });
     if(!updated) return;
-    if(!c.changes)c.changes=[];
-    c.changes.unshift({field:'Bindningstid',from:(c.bind_months||12)+' månader (gammal)',to:'24 månader (förnyad '+new Date().toLocaleDateString('sv-SE')+')',d:nowS()});
+    await logChange(c.id,c.name,'Bindningstid',(c.bind_months||12)+' månader','24 månader (förnyad '+new Date().toLocaleDateString('sv-SE')+')');
     c.bind_start=new Date().toISOString();c.bind_months=24;
     svb.style.opacity='1';setTimeout(()=>svb.style.opacity='0',2000);refreshT();
   });
@@ -780,12 +877,132 @@ function buildX(c){
       binding_start_date:pastDate.toISOString().split('T')[0]
     });
     if(!updated) return;
-    if(!c.changes)c.changes=[];
-    c.changes.unshift({field:'Bindningstid',from:(c.bind_months||12)+' månader',to:'Ingen bindningstid (borttagen)',d:nowS()});
+    await logChange(c.id,c.name,'Bindningstid',(c.bind_months||12)+' månader','Ingen bindningstid (borttagen)');
     c.bind_start=pastDate.toISOString();c.bind_months=0;
     svb.style.opacity='1';setTimeout(()=>svb.style.opacity='0',2000);refreshT();
   });
   xi.appendChild(bs);
+
+  // LJUDFIL PER KUND
+  const audio=c._audio||null;
+  const audioSec=mkSec('🎤 Samtalsljud',`
+    <div id="audio-wrap-${c.id}">
+      ${audio?`
+        <div style="background:var(--bg2);border-radius:8px;padding:.7rem .9rem;margin-bottom:.7rem;">
+          <div style="font-size:12px;font-weight:600;color:var(--gd);margin-bottom:.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(audio.title)}">${esc(audio.title)}</div>
+          <div class="audio-player" id="apl-${c.id}">
+            <button class="audio-play-btn" id="apb-${c.id}">
+              <svg class="play-icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 3l9 5-9 5V3z"/></svg>
+              <svg class="pause-icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style="display:none;"><rect x="4" y="3" width="3" height="10"/><rect x="9" y="3" width="3" height="10"/></svg>
+            </button>
+            <button class="audio-rewind-btn" id="arw-${c.id}" title="−10s">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8a5 5 0 015-5h2"/><polyline points="10,1 12,3 10,5"/></svg>
+            </button>
+            <div class="audio-time-wrap">
+              <span class="audio-time-current" id="act-${c.id}">0:00</span>
+              <div class="audio-progress" id="apr-${c.id}"><div class="audio-progress-bar" id="apbar-${c.id}"></div></div>
+              <span class="audio-time-total" id="adt-${c.id}">0:00</span>
+            </div>
+            <button class="audio-forward-btn" id="afw-${c.id}" title="+10s">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 8a5 5 0 00-5-5H6"/><polyline points="6,1 4,3 6,5"/></svg>
+            </button>
+            <audio id="aaud-${c.id}" preload="metadata" controlsList="nodownload noplaybackrate" oncontextmenu="return false;" style="display:none;"></audio>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <label class="btn bs bxs" style="cursor:pointer;font-size:11px;">
+            🔄 Byt fil
+            <input type="file" id="afile-${c.id}" accept="audio/*" style="display:none;">
+          </label>
+          <button class="btn bxs" id="adel-${c.id}" style="font-size:11px;background:var(--errl);color:var(--err);border:1px solid var(--err);">🗑 Ta bort</button>
+          <span id="ast-${c.id}" style="font-size:11px;color:var(--g);opacity:0;transition:opacity .3s;">✓ Uppdaterad!</span>
+        </div>
+      `:`
+        <div style="font-size:12px;color:var(--mu);margin-bottom:.6rem;">Ingen ljudfil uppladdad ännu.</div>
+        <label class="btn bs bxs" style="cursor:pointer;font-size:11px;">
+          📤 Ladda upp samtal
+          <input type="file" id="afile-${c.id}" accept="audio/*" style="display:none;">
+        </label>
+        <span id="ast-${c.id}" style="font-size:11px;color:var(--g);opacity:0;transition:opacity .3s;margin-left:8px;">✓ Uppladdad!</span>
+      `}
+    </div>
+  `);
+
+  // Wire audio upload
+  const fileInput=audioSec.querySelector(`#afile-${c.id}`);
+  if(fileInput){
+    fileInput.addEventListener('change',async()=>{
+      const file=fileInput.files[0];
+      if(!file) return;
+      if(file.size>50*1024*1024){alert('Filen är för stor (max 50 MB)');return;}
+      const stEl=audioSec.querySelector(`#ast-${c.id}`);
+      stEl.textContent='⏳ Laddar upp...';stEl.style.color='var(--mu)';stEl.style.opacity='1';
+      const ok=await uploadCustomerAudio(c.id,file);
+      if(ok){
+        stEl.textContent='✓ Klar!';stEl.style.color='var(--g)';
+        setTimeout(()=>{stEl.style.opacity='0';refreshT();},1000);
+      } else {
+        stEl.textContent='❌ Fel';stEl.style.color='var(--err)';
+        setTimeout(()=>stEl.style.opacity='0',2000);
+      }
+    });
+  }
+
+  // Wire delete audio
+  const delAudioBtn=audioSec.querySelector(`#adel-${c.id}`);
+  if(delAudioBtn){
+    delAudioBtn.addEventListener('click',async()=>{
+      if(!confirm('Ta bort ljudfilen för denna kund?')) return;
+      await deleteCustomerAudio(c.id);
+      refreshT();
+    });
+  }
+
+  // Wire audio player (if audio exists)
+  if(audio){
+    const playBtn=audioSec.querySelector(`#apb-${c.id}`);
+    const rewindBtn=audioSec.querySelector(`#arw-${c.id}`);
+    const forwardBtn=audioSec.querySelector(`#afw-${c.id}`);
+    const progressEl=audioSec.querySelector(`#apr-${c.id}`);
+    const barEl=audioSec.querySelector(`#apbar-${c.id}`);
+    const curEl=audioSec.querySelector(`#act-${c.id}`);
+    const durEl=audioSec.querySelector(`#adt-${c.id}`);
+    const audioEl=audioSec.querySelector(`#aaud-${c.id}`);
+    const playIcon=playBtn.querySelector('.play-icon');
+    const pauseIcon=playBtn.querySelector('.pause-icon');
+
+    function fmt(t){if(!isFinite(t))return'0:00';const m=Math.floor(t/60),s=Math.floor(t%60);return m+':'+(s<10?'0':'')+s;}
+
+    // Load signed URL on first play
+    let urlLoaded=false;
+    playBtn.addEventListener('click',async()=>{
+      if(!urlLoaded){
+        playBtn.disabled=true;
+        const url=await getAudioUrl(audio.storage_path);
+        if(!url){playBtn.disabled=false;return;}
+        audioEl.src=url;
+        urlLoaded=true;
+        playBtn.disabled=false;
+      }
+      if(audioEl.paused) audioEl.play(); else audioEl.pause();
+    });
+    rewindBtn.addEventListener('click',()=>{audioEl.currentTime=Math.max(0,audioEl.currentTime-10);});
+    forwardBtn.addEventListener('click',()=>{audioEl.currentTime=Math.min(audioEl.duration||0,audioEl.currentTime+10);});
+    progressEl.addEventListener('click',(e)=>{
+      const rect=progressEl.getBoundingClientRect();
+      if(audioEl.duration) audioEl.currentTime=((e.clientX-rect.left)/rect.width)*audioEl.duration;
+    });
+    audioEl.addEventListener('loadedmetadata',()=>{durEl.textContent=fmt(audioEl.duration);});
+    audioEl.addEventListener('timeupdate',()=>{
+      curEl.textContent=fmt(audioEl.currentTime);
+      if(audioEl.duration) barEl.style.width=((audioEl.currentTime/audioEl.duration)*100)+'%';
+    });
+    audioEl.addEventListener('play',()=>{playIcon.style.display='none';pauseIcon.style.display='block';});
+    audioEl.addEventListener('pause',()=>{playIcon.style.display='block';pauseIcon.style.display='none';});
+    audioEl.addEventListener('ended',()=>{playIcon.style.display='block';pauseIcon.style.display='none';});
+    audioEl.oncontextmenu=()=>false;
+  }
+  xi.appendChild(audioSec);
 
   // ANTECKNINGAR
   const notes=c.notes||[];
@@ -801,9 +1018,16 @@ function buildX(c){
       ${notes.length>1?`<button class="ntog" id="ntog-${c.id}">${showAll?'▲ Dölj historik':'▼ Visa alla '+notes.length+' anteckningar'}</button>`:''}
     </div>
   `);
-  ns.querySelector(`#nadd-${c.id}`).addEventListener('click',()=>{
-    const ta=ns.querySelector(`#nn-${c.id}`);const txt=ta.value.trim();if(!txt)return;
-    c.notes.unshift({t:txt,d:nowS()});ta.value='';S.showAll[c.id]=false;refreshT();
+  ns.querySelector(`#nadd-${c.id}`).addEventListener('click',async()=>{
+    const ta=ns.querySelector(`#nn-${c.id}`);
+    const txt=ta.value.trim();
+    if(!txt) return;
+    const btn=ns.querySelector(`#nadd-${c.id}`);
+    btn.disabled=true;btn.textContent='Sparar...';
+    const saved=await saveNote(c.id, txt);
+    btn.disabled=false;btn.textContent='Lägg till';
+    if(!saved) return;
+    ta.value='';S.showAll[c.id]=false;refreshT();
   });
   const tog=ns.querySelector(`#ntog-${c.id}`);
   if(tog)tog.addEventListener('click',()=>{S.showAll[c.id]=!showAll;refreshT();});
@@ -816,11 +1040,11 @@ function buildX(c){
       ? '<p style="font-size:12px;color:var(--mu);">Inga ändringar registrerade ännu.</p>'
       : `<div class="clog">${changes.map(ch=>`
           <div class="cle">
-            <div class="cle-ico">${ch.field==='Paket'?'📦':ch.field==='Tilläggstjänst'?'➕':'📅'}</div>
+            <div class="cle-ico">${ch.field==='Paket'?'📦':ch.field==='Tilläggstjänst'?'➕':ch.field==='Status'?'🔄':'📅'}</div>
             <div class="cle-body">
-              <div class="cle-what">${ch.field} ändrad</div>
+              <div class="cle-what">${esc(ch.field)} ändrad</div>
               <div class="cle-meta"><span style="color:var(--err);">${esc(ch.from)}</span><span class="cle-arrow">→</span><span style="color:var(--g);font-weight:600;">${esc(ch.to)}</span></div>
-              <div class="cle-meta" style="margin-top:2px;">🕐 ${ch.d}</div>
+              <div class="cle-meta" style="margin-top:2px;">🕐 ${ch.d}${ch.by?` · <em>${esc(ch.by)}</em>`:''}</div>
             </div>
           </div>`).join('')}</div>`
   );
@@ -905,6 +1129,8 @@ function showConfirm(type,c){
       status_reason:type
     });
     if(!updated) return;
+    const statusLabels={anger:'Ångrar',makulering:'Makulering',radera:'Raderad (6 mån)'};
+    await logChange(c.id,c.name,'Status','Aktiv',statusLabels[type]||type);
     c.status=localStatusMap[type];c.archived=true;
     c.deleted_at=new Date().toISOString();c.delete_reason=reasonMap[type];
     S.openId=null;closeM();render();
@@ -1033,12 +1259,18 @@ function rKTg(){
     `;
     card.addEventListener('click',e=>{if(e.target.tagName==='BUTTON'||e.target.tagName==='TEXTAREA')return;S.ktOpenId=isO?null:c.id;rKTg();});
     if(isO){
+      // Load detail if not yet loaded
+      if(!c._detailLoaded) loadCustomerDetail(c.id).then(()=>rKTg());
       const ab=card.querySelector(`#ktadd-${c.id}`);
-      if(ab)ab.addEventListener('click',e=>{
+      if(ab)ab.addEventListener('click',async e=>{
         e.stopPropagation();
         const ta=card.querySelector(`#ktta-${c.id}`);
         const t=ta.value.trim();if(!t)return;
-        c.notes.unshift({t,d:nowS()});ta.value='';rKTg();
+        ab.disabled=true;ab.textContent='Sparar...';
+        const saved=await saveNote(c.id,t);
+        ab.disabled=false;ab.textContent='Lägg till';
+        if(!saved)return;
+        ta.value='';rKTg();
       });
     }
     g.appendChild(card);
