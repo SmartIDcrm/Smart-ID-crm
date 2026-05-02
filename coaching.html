@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SmartID – Coachning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --g:#1E5C4E;--gd:#1A3D30;--gt:#4AAF96;--gold:#C8A84B;--err:#C0392B;--errl:#FCEBEB;
+  --w:#fff;--bg:#F7F5EE;--bg2:#EFEBDF;--br:#E0DBC9;--tx:#2C2C2A;--mu:#7A7872;
+  --sb:240px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;}
+.btn{background:var(--g);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{background:var(--gd);}
+.btn-s{background:var(--w);color:var(--gd);border:1px solid var(--br);padding:7px 14px;font-size:12px;}
+.btn-s:hover{background:var(--bg);}
+.btn-gold{background:var(--gold);}
+.btn-gold:hover{background:#A88E3D;}
+.btn-err{background:var(--err);}
+.btn-err:hover{background:#A02818;}
+.btn-lg{padding:12px 22px;font-size:14px;}
+.input,.textarea,.select{width:100%;padding:9px 12px;border:1px solid var(--br);border-radius:8px;font-size:13px;font-family:inherit;color:var(--tx);background:var(--w);}
+.input:focus,.textarea:focus,.select:focus{outline:none;border-color:var(--g);}
+.textarea{min-height:60px;resize:vertical;}
+
+/* === LOGIN === */
+.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;background:linear-gradient(135deg,var(--g),var(--gd));}
+.login-box{background:var(--w);border-radius:14px;padding:2.5rem;max-width:420px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2);}
+.login-logo{font-size:24px;font-weight:800;color:var(--g);margin-bottom:.5rem;}
+.login-sub{font-size:13px;color:var(--mu);margin-bottom:1.6rem;}
+
+/* === LAYOUT === */
+.app{display:flex;min-height:100vh;}
+.sb{width:var(--sb);background:var(--gd);color:rgba(255,255,255,.85);padding:1rem .8rem;display:flex;flex-direction:column;flex-shrink:0;}
+.sb-logo{font-size:18px;font-weight:800;color:#fff;padding:.5rem .8rem 1.2rem;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:.8rem;}
+.sb-user{padding:.6rem .8rem;background:rgba(255,255,255,.06);border-radius:8px;margin-bottom:1rem;}
+.sb-user-name{font-size:13px;font-weight:600;color:#fff;}
+.sb-user-role{font-size:11px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+.sb-sec{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.08em;padding:.7rem .8rem .3rem;}
+.sb-i{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;color:rgba(255,255,255,.7);padding:.6rem .8rem;border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;text-align:left;transition:all .15s;}
+.sb-i:hover{background:rgba(255,255,255,.06);color:#fff;}
+.sb-i.active{background:var(--g);color:#fff;}
+.sb-badge{margin-left:auto;background:var(--gold);color:#fff;font-size:10px;padding:1px 7px;border-radius:8px;font-weight:700;}
+.sb-ftr{margin-top:auto;padding-top:1rem;border-top:1px solid rgba(255,255,255,.1);}
+.main{flex:1;padding:1.5rem;overflow-x:hidden;}
+
+/* === CONTENT === */
+.ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.4rem;flex-wrap:wrap;gap:10px;}
+.ph-t{font-size:22px;font-weight:700;color:var(--gd);}
+.ph-s{font-size:13px;color:var(--mu);margin-top:2px;}
+
+/* === SESSION LIST === */
+.tabs{background:var(--w);padding:0;display:flex;gap:0;border-bottom:1px solid var(--br);border-radius:10px 10px 0 0;overflow:hidden;}
+.tab{background:none;border:none;padding:12px 18px;font-size:13px;color:var(--mu);cursor:pointer;border-bottom:3px solid transparent;font-family:inherit;font-weight:500;flex:1;text-align:left;}
+.tab.active{color:var(--g);border-bottom-color:var(--gold);font-weight:700;background:var(--bg);}
+.tab .count{background:var(--gold);color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;}
+
+.session-list{display:flex;flex-direction:column;gap:10px;background:var(--w);border-radius:0 0 10px 10px;padding:1rem;border:1px solid var(--br);border-top:none;}
+.session-card{border:1px solid var(--br);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .2s;display:flex;justify-content:space-between;align-items:center;gap:16px;background:var(--w);}
+.session-card:hover{border-color:var(--g);background:var(--bg);transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.04);}
+.session-info{flex:1;min-width:0;}
+.session-title{font-size:14px;font-weight:600;color:var(--gd);margin-bottom:4px;}
+.session-meta{font-size:12px;color:var(--mu);display:flex;gap:14px;flex-wrap:wrap;}
+.status-pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:12px;white-space:nowrap;}
+.s-waiting_seller{background:#FCEBEB;color:#A32D2D;}
+.s-waiting_coach{background:#FAEEDA;color:#854F0B;}
+.s-active{background:#E1F5EE;color:#0F6E56;}
+.s-done{background:#EEEDFE;color:#534AB7;}
+
+/* === FORM === */
+.form-section{margin-bottom:1.2rem;}
+.form-label{font-size:11px;font-weight:700;color:var(--gd);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:block;}
+.form-help{font-size:12px;color:var(--mu);margin-bottom:8px;}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* === SECTIONS === */
+.sec{margin-bottom:1.2rem;background:var(--w);border-radius:10px;border:1px solid var(--br);overflow:hidden;}
+.sec-hdr{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg);border-bottom:1px solid var(--br);}
+.sec-hdr .icon{font-size:16px;}
+.sec-hdr .title{font-size:13px;font-weight:700;color:var(--gd);flex:1;}
+.sec-body{padding:14px;}
+
+/* === Q-CARD === */
+.q-card{background:var(--bg);border-radius:8px;padding:11px 13px;margin-bottom:8px;}
+.q-shared{border-left:3px solid var(--gt);}
+.q-seller{border-left:3px solid var(--gold);}
+.q-coach{border-left:3px solid #534AB7;}
+.q-num{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;color:var(--mu);}
+.q-q{font-size:13px;color:var(--gd);margin-bottom:6px;font-weight:500;}
+.q-rationale{font-size:11px;color:var(--mu);font-style:italic;margin-bottom:6px;display:flex;align-items:center;gap:4px;}
+
+/* === AUDIO === */
+.audio-bar{background:var(--bg);border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;margin-bottom:12px;border:1px solid var(--br);}
+.audio-play{background:var(--g);color:#fff;border:none;width:38px;height:38px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.audio-play:hover{background:var(--gd);}
+.audio-info{flex:1;min-width:0;}
+.audio-title{font-size:13px;font-weight:600;color:var(--gd);}
+.audio-progress{height:4px;background:var(--br);border-radius:2px;margin-top:6px;cursor:pointer;}
+.audio-bar-fill{height:100%;background:var(--g);border-radius:2px;width:0%;transition:width .12s linear;}
+.audio-time{font-size:11px;color:var(--mu);font-variant-numeric:tabular-nums;}
+
+/* === STYRKA-MAL-PLAN === */
+.smp-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.smp-card{padding:12px;border-radius:10px;}
+.smp-styrka{background:#E1F5EE;}
+.smp-mal{background:#FAEEDA;}
+.smp-plan{background:#EEEDFE;}
+.smp-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.smp-styrka .smp-label{color:#0F6E56;}
+.smp-mal .smp-label{color:#854F0B;}
+.smp-plan .smp-label{color:#534AB7;}
+.smp-card .textarea{background:var(--w);border:none;font-size:12px;}
+
+/* === COMPARE === */
+.compare-box{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:var(--bg);border-radius:8px;padding:10px;margin-bottom:8px;}
+.compare-side{background:var(--w);border-radius:6px;padding:9px 11px;}
+.compare-side-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);margin-bottom:3px;}
+.compare-seller{border-left:3px solid var(--gold);}
+.compare-coach{border-left:3px solid var(--g);}
+.compare-text{font-size:12px;line-height:1.45;}
+.compare-empty{color:var(--mu);font-style:italic;}
+
+/* === TIMER === */
+.timer-bar{background:var(--gd);color:#fff;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.timer-time{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;}
+.timer-label{font-size:11px;opacity:.8;text-transform:uppercase;letter-spacing:.05em;}
+.timer-pulse{width:8px;height:8px;border-radius:50%;background:#4AAF96;display:inline-block;animation:pulse 1.5s ease-in-out infinite;margin-right:6px;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* === MODAL === */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-box{background:var(--w);border-radius:12px;max-width:680px;width:100%;max-height:90vh;display:flex;flex-direction:column;}
+.modal-hdr{padding:1.1rem 1.4rem;border-bottom:1px solid var(--br);display:flex;justify-content:space-between;align-items:center;}
+.modal-title{font-size:16px;font-weight:700;color:var(--gd);}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--mu);}
+.modal-body{padding:1.2rem 1.4rem;overflow-y:auto;flex:1;}
+.modal-ftr{padding:1rem 1.4rem;border-top:1px solid var(--br);display:flex;justify-content:flex-end;gap:8px;}
+
+/* === ADMIN === */
+.q-admin-card{background:var(--w);border:1px solid var(--br);border-radius:10px;padding:14px;margin-bottom:10px;}
+.q-admin-row{display:flex;gap:10px;align-items:flex-start;}
+.q-admin-content{flex:1;}
+.q-admin-actions{display:flex;flex-direction:column;gap:4px;}
+
+/* === MISC === */
+.toast{position:fixed;top:20px;right:20px;background:var(--g);color:#fff;padding:12px 18px;border-radius:8px;font-size:13px;font-weight:600;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:99999;animation:slideIn .3s ease;}
+@keyframes slideIn{from{transform:translateX(120%);}to{transform:translateX(0);}}
+.fade-in{animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.empty{text-align:center;padding:3rem 1rem;color:var(--mu);font-size:13px;}
+.loading{display:inline-block;width:14px;height:14px;border:2px solid var(--br);border-top-color:var(--g);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.conn-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4AAF96;margin-right:6px;}
+.conn-off{background:var(--err);}
+
+/* === MAIL PREVIEW === */
+.mail-preview{background:var(--bg);border-radius:10px;padding:18px 22px;border-left:4px solid var(--g);margin:1rem 0;}
+.mail-from{font-size:11px;color:var(--mu);margin-bottom:4px;}
+.mail-subject{font-size:14px;font-weight:600;color:var(--gd);margin-bottom:12px;border-bottom:1px solid var(--br);padding-bottom:8px;}
+.mail-stat-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--br);font-size:12px;}
+.mail-stat-row:last-child{border-bottom:none;}
+
+@media(max-width:768px){
+  :root{--sb:60px;}
+  .sb-logo,.sb-user,.sb-sec,.sb-i span{display:none;}
+  .sb-i{justify-content:center;padding:.7rem;}
+}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+<script>
+// === SUPABASE CONFIG ===
+const SUPA_URL='https://hfbhoufqvozbxkqlldzl.supabase.co';
+const SUPA_KEY='sb_publishable_jdNOJLg2OOeyQfj8yLXIoA_6ySKL5tn';
+const sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);
+window.sb=sb;
+
+// === STATE ===
+const S={
+  user:null,
+  profile:null,
+  seller:null,           // if logged in as seller
+  isAdmin:false,
+  isCoach:false,
+  isSeller:false,
+  view:'list',
+  tab:'waiting_seller',
+  sessions:[],
+  questions:[],
+  sellers:[],
+  currentSession:null,
+  timerSeconds:0,
+  timerInterval:null,
+  conn:'connecting'
+};
+
+// === HELPERS ===
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const fmt=sec=>{const m=Math.floor(sec/60),s=sec%60;return m+':'+(s<10?'0':'')+s;};
+const fmtDate=d=>d?new Date(d).toLocaleDateString('sv-SE'):'';
+
+function toast(msg,type='ok'){
+  const t=document.createElement('div');
+  t.className='toast';
+  if(type==='err')t.style.background='var(--err)';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+// === AUTH ===
+async function init(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){renderLogin();return;}
+  S.user=user;
+  
+  // Get profile (admin/kundtjanst/saljare)
+  const {data:profile}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
+  S.profile=profile;
+  S.isAdmin=profile?.role==='admin';
+  S.isCoach=profile?.role==='kundtjanst'||profile?.role==='admin';
+  
+  // Get seller record (if user is a seller)
+  const {data:seller}=await sb.from('sellers').select('*').eq('user_id',user.id).maybeSingle();
+  S.seller=seller;
+  S.isSeller=!!seller;
+  
+  S.conn='ok';
+  await loadData();
+  render();
+}
+
+function renderLogin(){
+  document.getElementById('app').innerHTML=`
+    <div class="login-page">
+      <div class="login-box">
+        <div class="login-logo">SmartID Coachning</div>
+        <div class="login-sub">Logga in med ditt SmartID-konto</div>
+        <form id="login-form">
+          <div class="form-section">
+            <label class="form-label">E-post</label>
+            <input type="email" id="login-email" class="input" required>
+          </div>
+          <div class="form-section">
+            <label class="form-label">Lösenord</label>
+            <input type="password" id="login-pwd" class="input" required>
+          </div>
+          <button type="submit" class="btn btn-lg" style="width:100%;">Logga in</button>
+          <div id="login-err" style="color:var(--err);font-size:12px;margin-top:10px;display:none;"></div>
+        </form>
+      </div>
+    </div>
+  `;
+  document.getElementById('login-form').onsubmit=async(e)=>{
+    e.preventDefault();
+    const email=document.getElementById('login-email').value;
+    const pwd=document.getElementById('login-pwd').value;
+    const errEl=document.getElementById('login-err');
+    errEl.style.display='none';
+    const {error}=await sb.auth.signInWithPassword({email,password:pwd});
+    if(error){errEl.style.display='block';errEl.textContent='Fel e-post eller lösenord';return;}
+    init();
+  };
+}
+
+async function loadData(){
+  // Load questions
+  const {data:qs}=await sb.from('feedback_questions').select('*').eq('active',true).order('question_type').order('sort_order');
+  S.questions=qs||[];
+  
+  // Load sessions (RLS handles filtering)
+  const {data:sessions}=await sb.from('feedback_sessions').select('*, sellers(name)').order('created_at',{ascending:false});
+  S.sessions=sessions||[];
+  
+  // Load sellers (for coach)
+  if(S.isCoach){
+    const {data:sellers}=await sb.from('sellers').select('*').eq('active',true).order('name');
+    S.sellers=sellers||[];
+  }
+}
+
+// === RENDER ===
+function render(){
+  document.getElementById('app').innerHTML=`
+    <div class="app">
+      <aside class="sb">
+        <div class="sb-logo">🎯 Coachning</div>
+        <div class="sb-user">
+          <div class="sb-user-name">${esc(S.profile?.name||S.user.email)}</div>
+          <div class="sb-user-role">${S.isAdmin?'Admin':S.isCoach?'Coach':S.isSeller?'Säljare':'Användare'}</div>
+        </div>
+        
+        <div class="sb-sec">Sessioner</div>
+        <button class="sb-i ${S.view==='list'?'active':''}" onclick="goView('list')">
+          📋 <span>Mina sessioner</span>
+        </button>
+        
+        ${S.isCoach?`
+          <div class="sb-sec">Coach-verktyg</div>
+          <button class="sb-i ${S.view==='new'?'active':''}" onclick="goView('new')">
+            ➕ <span>Skapa session</span>
+          </button>
+          <button class="sb-i ${S.view==='sellers'?'active':''}" onclick="goView('sellers')">
+            👥 <span>Säljare</span>
+          </button>
+          <button class="sb-i ${S.view==='questions'?'active':''}" onclick="goView('questions')">
+            ❓ <span>Frågor</span>
+          </button>
+        `:''}
+        
+        <div class="sb-ftr">
+          <button class="sb-i" onclick="logout()">
+            🚪 <span>Logga ut</span>
+          </button>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);padding:8px;text-align:center;">
+            <span class="conn-dot ${S.conn==='ok'?'':'conn-off'}"></span>
+            ${S.conn==='ok'?'Ansluten':'Offline'}
+          </div>
+        </div>
+      </aside>
+      
+      <main class="main" id="main"></main>
+    </div>
+  `;
+  renderMain();
+}
+
+function goView(v){
+  if(S.timerInterval){clearInterval(S.timerInterval);S.timerInterval=null;}
+  S.view=v;
+  S.currentSession=null;
+  render();
+}
+
+function renderMain(){
+  const m=document.getElementById('main');
+  if(S.view==='list')rList(m);
+  else if(S.view==='session')rSession(m);
+  else if(S.view==='new')rNew(m);
+  else if(S.view==='sellers')rSellers(m);
+  else if(S.view==='questions')rQuestions(m);
+  else if(S.view==='done')rDone(m);
+}
+
+// === SESSION LIST ===
+function rList(m){
+  const sessions=S.sessions;
+  const counts={
+    waiting_seller:sessions.filter(s=>s.status==='waiting_seller').length,
+    waiting_coach:sessions.filter(s=>s.status==='waiting_coach').length,
+    active:sessions.filter(s=>s.status==='active').length,
+    done:sessions.filter(s=>s.status==='done').length
+  };
+  
+  m.innerHTML=`
+    <div class="ph">
+      <div>
+        <div class="ph-t">📋 Coachningssessioner</div>
+        <div class="ph-s">${S.isSeller?'Dina ärenden från coachen':'Alla pågående och avslutade sessioner'}</div>
+      </div>
+      ${S.isCoach?`<button class="btn btn-lg" onclick="goView('new')">+ Skapa session</button>`:''}
+    </div>
+    
+    <div class="tabs">
+      <button class="tab ${S.tab==='waiting_seller'?'active':''}" onclick="setTab('waiting_seller')">🔴 ${S.isSeller?'Att svara på':'Väntar på säljare'} <span class="count">${counts.waiting_seller}</span></button>
+      <button class="tab ${S.tab==='waiting_coach'?'active':''}" onclick="setTab('waiting_coach')">🟡 Väntar på coach <span class="count">${counts.waiting_coach}</span></button>
+      <button class="tab ${S.tab==='active'?'active':''}" onclick="setTab('active')">🟢 Pågående <span class="count">${counts.active}</span></button>
+      <button class="tab ${S.tab==='done'?'active':''}" onclick="setTab('done')">✓ Avslutade <span class="count">${counts.done}</span></button>
+    </div>
+    
+    <div class="session-list" id="sl"></div>
+  `;
+  renderSL();
+}
+
+function setTab(t){S.tab=t;renderSL();}
+function renderSL(){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`.tab[onclick*="${S.tab}"]`)?.classList.add('active');
+  
+  const sl=document.getElementById('sl');
+  const items=S.sessions.filter(s=>s.status===S.tab);
+  if(items.length===0){
+    sl.innerHTML='<div class="empty">Inga sessioner i denna status</div>';
+    return;
+  }
+  sl.innerHTML=items.map(s=>`
+    <div class="session-card fade-in" onclick="openSession('${s.id}')">
+      <div class="session-info">
+        <div class="session-title">${esc(s.call_title)}</div>
+        <div class="session-meta">
+          <span>👤 ${esc(s.sellers?.name||'–')}</span>
+          ${s.call_duration?`<span>🎧 ${s.call_duration}</span>`:''}
+          <span>📅 ${fmtDate(s.created_at)}</span>
+          ${s.session_duration_seconds?`<span>⏱ ${fmt(s.session_duration_seconds)}</span>`:''}
+        </div>
+      </div>
+      <div class="status-pill s-${s.status}">
+        ${s.status==='waiting_seller'?'🔴 '+(S.isSeller?'Svara':'Väntar på säljare'):s.status==='waiting_coach'?'🟡 Väntar på coach':s.status==='active'?'🟢 Pågående':'✓ Avslutad'}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openSession(id){
+  S.currentSession=S.sessions.find(s=>s.id===id);
+  if(!S.currentSession)return;
+  S.view='session';
+  S.timerSeconds=S.currentSession.session_duration_seconds||0;
+  if(S.isCoach&&S.currentSession.status!=='done'){
+    S.timerInterval=setInterval(()=>{S.timerSeconds++;const t=document.getElementById('tdisp');if(t)t.textContent=fmt(S.timerSeconds);},1000);
+  }
+  render();
+}
+
+// === SESSION VIEW ===
+function rSession(m){
+  const s=S.currentSession;
+  if(!s){goView('list');return;}
+  
+  const sharedQs=S.questions.filter(q=>q.question_type==='shared');
+  const sellerQs=S.questions.filter(q=>q.question_type==='seller');
+  const coachQs=S.questions.filter(q=>q.question_type==='coach');
+  
+  const sa=s.seller_answers||{};
+  const ca=s.coach_answers||{};
+  
+  let html=`
+    <button class="btn btn-s" style="margin-bottom:1rem;" onclick="goView('list')">← Tillbaka</button>
+    
+    <div class="ph">
+      <div>
+        <div style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;">Session · ${fmtDate(s.created_at)}</div>
+        <div class="ph-t">${esc(s.call_title)}</div>
+        <div class="ph-s">${esc(s.sellers?.name||'–')} · ${s.call_duration||''} ${s.call_duration?'min':''}</div>
+      </div>
+      <div class="status-pill s-${s.status}" style="font-size:13px;padding:6px 14px;">
+        ${s.status==='waiting_seller'?'🔴 Väntar på säljare':s.status==='waiting_coach'?'🟡 Väntar på coach':s.status==='active'?'🟢 Pågående':'✓ Avslutad'}
+      </div>
+    </div>
+    
+    ${S.isCoach&&s.status!=='done'?`
+      <div class="timer-bar">
+        <div><span class="timer-pulse"></span><span class="timer-label">Sessionstid (löper för coachen)</span></div>
+        <div class="timer-time" id="tdisp">${fmt(S.timerSeconds)}</div>
+      </div>
+    `:''}
+    
+    ${s.call_audio_path?`
+      <div class="audio-bar">
+        <button class="audio-play" onclick="playAudio('${s.call_audio_path}','${s.id}')">▶</button>
+        <div class="audio-info">
+          <div class="audio-title">📞 Inspelat samtal</div>
+          <div class="audio-progress" id="ap-${s.id}"><div class="audio-bar-fill" id="apf-${s.id}"></div></div>
+        </div>
+        <div class="audio-time" id="at-${s.id}">${s.call_duration||'0:00'}</div>
+        <audio id="audio-${s.id}" preload="metadata" controlsList="nodownload" oncontextmenu="return false;"></audio>
+      </div>
+    `:''}
+  `;
+  
+  // === SELLER VIEW ===
+  if(S.isSeller&&!S.isCoach){
+    if(s.status==='waiting_seller'){
+      html+=`
+        <div class="sec">
+          <div class="sec-hdr"><span class="icon">📝</span><span class="title">Steg 1 · Sammanfatta samtalet (egna ord)</span></div>
+          <div class="sec-body">
+            <div class="form-help">Beskriv samtalet i 3–4 meningar – som om du berättar för en kollega.</div>
+            <textarea class="textarea" id="seller-summary" placeholder="Kunden var...">${esc(s.seller_summary||'')}</textarea>
+          </div>
+        </div>
+        
+        ${s.coach_questions&&s.coach_questions.length?`
+          <div class="sec">
+            <div class="sec-hdr"><span class="icon">💬</span><span class="title">Steg 2 · Coachens specifika frågor om detta samtal</span></div>
+            <div class="sec-body">
+              ${s.coach_questions.map((q,i)=>`
+                <div class="q-card q-shared">
+                  <div class="q-num">Fråga ${i+1}${q.time?' · '+esc(q.time):''}</div>
+                  <div class="q-q">${esc(q.q)}</div>
+                  <textarea class="textarea" data-key="cq_${i}" placeholder="Ditt svar...">${esc(sa['cq_'+i]||'')}</textarea>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `:''}
+        
+        ${sharedQs.length?`
+          <div class="sec">
+            <div class="sec-hdr"><span class="icon">🎯</span><span class="title">Steg 3 · Gemensamma frågor (coachen svarar också)</span></div>
+            <div class="sec-body">
+              ${sharedQs.map(q=>`
+                <div class="q-card q-shared">
+                  <div class="q-q">${esc(q.question)}</div>
+                  <textarea class="textarea" data-key="sh_${q.id}" placeholder="Ditt svar...">${esc(sa['sh_'+q.id]||'')}</textarea>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `:''}
+        
+        ${sellerQs.length?`
+          <div class="sec">
+            <div class="sec-hdr"><span class="icon">👤</span><span class="title">Steg 4 · Riktade till dig (din upplevelse)</span></div>
+            <div class="sec-body">
+              ${sellerQs.map(q=>`
+                <div class="q-card q-seller">
+                  <div class="q-q">${esc(q.question)}</div>
+                  ${q.rationale?`<div class="q-rationale">💭 ${esc(q.rationale)}</div>`:''}
+                  <textarea class="textarea" data-key="sq_${q.id}" placeholder="Ditt svar...">${esc(sa['sq_'+q.id]||'')}</textarea>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `:''}
+        
+        <div style="display:flex;gap:10px;margin-top:1rem;">
+          <button class="btn btn-lg" onclick="submitSellerAnswers()">📤 Skicka svar till coachen</button>
+          <button class="btn btn-s btn-lg" onclick="saveSellerDraft()">💾 Spara utkast</button>
+        </div>
+      `;
+    } else {
+      // Säljare ser sina svar (read-only) i andra statusar
+      html+=`
+        <div class="sec">
+          <div class="sec-hdr"><span class="icon">✅</span><span class="title">Du har skickat in dina svar</span></div>
+          <div class="sec-body">
+            <p style="color:var(--mu);font-size:13px;">Coachen kommer att svara och eventuellt boka en uppföljning. Du kommer få ett mail med sammanfattningen när sessionen är avslutad.</p>
+          </div>
+        </div>
+        ${s.seller_summary?`<div class="sec"><div class="sec-hdr"><span class="title">Din sammanfattning</span></div><div class="sec-body" style="font-style:italic;color:var(--mu);">"${esc(s.seller_summary)}"</div></div>`:''}
+      `;
+    }
+  }
+  
+  // === COACH VIEW ===
+  if(S.isCoach){
+    html+=`
+      ${s.seller_summary?`
+        <div class="sec">
+          <div class="sec-hdr"><span class="icon">📝</span><span class="title">${esc(s.sellers?.name||'Säljarens')} sammanfattning</span></div>
+          <div class="sec-body" style="background:var(--bg);font-size:13px;font-style:italic;">"${esc(s.seller_summary)}"</div>
+        </div>
+      `:s.status==='waiting_seller'?`
+        <div class="sec">
+          <div class="sec-body" style="text-align:center;color:var(--mu);">
+            ⏳ Väntar på att säljaren skickar in sina svar
+          </div>
+        </div>
+      `:''}
+      
+      ${s.coach_questions&&s.coach_questions.length?`
+        <div class="sec">
+          <div class="sec-hdr"><span class="icon">💬</span><span class="title">Coachens specifika frågor (du skickade)</span></div>
+          <div class="sec-body">
+            ${s.coach_questions.map((q,i)=>`
+              <div class="compare-box">
+                <div class="compare-side compare-seller">
+                  <div class="compare-side-label">📞 ${esc(s.sellers?.name||'Säljaren')}s svar</div>
+                  <div class="compare-text ${sa['cq_'+i]?'':'compare-empty'}">${sa['cq_'+i]?esc(sa['cq_'+i]):'Inget svar än'}</div>
+                </div>
+                <div class="compare-side compare-coach">
+                  <div class="compare-side-label">📍 Frågan</div>
+                  <div class="compare-text" style="font-weight:500;">${esc(q.q)}</div>
+                  ${q.time?`<div class="q-num">${esc(q.time)}</div>`:''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `:''}
+      
+      ${sharedQs.length?`
+        <div class="sec">
+          <div class="sec-hdr"><span class="icon">🎯</span><span class="title">Gemensamma frågor (du och säljaren svarar)</span></div>
+          <div class="sec-body">
+            ${sharedQs.map(q=>`
+              <div class="compare-box">
+                <div class="compare-side compare-seller">
+                  <div class="compare-side-label">📞 ${esc(s.sellers?.name||'Säljaren')}s svar</div>
+                  <div class="compare-text ${sa['sh_'+q.id]?'':'compare-empty'}">${sa['sh_'+q.id]?esc(sa['sh_'+q.id]):'Inget svar än'}</div>
+                </div>
+                <div class="compare-side compare-coach">
+                  <div class="compare-side-label">👔 Ditt svar</div>
+                  <div style="font-size:11px;font-weight:500;color:var(--gd);margin-bottom:4px;">${esc(q.question)}</div>
+                  <textarea class="textarea" data-key="sh_${q.id}" placeholder="Ditt svar..." style="min-height:50px;">${esc(ca['sh_'+q.id]||'')}</textarea>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `:''}
+      
+      ${coachQs.length?`
+        <div class="sec">
+          <div class="sec-hdr"><span class="icon">👔</span><span class="title">Coach-frågor (bara du svarar – säljaren ser inte dessa)</span></div>
+          <div class="sec-body">
+            ${coachQs.map(q=>`
+              <div class="q-card q-coach">
+                <div class="q-q">${esc(q.question)}</div>
+                ${q.rationale?`<div class="q-rationale">💭 ${esc(q.rationale)}</div>`:''}
+                <textarea class="textarea" data-key="cq_${q.id}" placeholder="Din plan...">${esc(ca['cq_'+q.id]||'')}</textarea>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `:''}
+      
+      <div class="sec">
+        <div class="sec-hdr"><span class="icon">💪</span><span class="title">STYRKA · MÅL · PLAN</span></div>
+        <div class="sec-body">
+          <div class="smp-grid">
+            <div class="smp-card smp-styrka">
+              <div class="smp-label">🌟 Styrka</div>
+              <textarea class="textarea" id="smp-styrka" placeholder="Vad gjorde säljaren bra?">${esc(s.styrka||'')}</textarea>
+            </div>
+            <div class="smp-card smp-mal">
+              <div class="smp-label">🎯 Mål (en sak)</div>
+              <textarea class="textarea" id="smp-mal" placeholder="EN konkret sak...">${esc(s.mal||'')}</textarea>
+            </div>
+            <div class="smp-card smp-plan">
+              <div class="smp-label">📋 Plan</div>
+              <textarea class="textarea" id="smp-plan" placeholder="Hur övar säljaren?">${esc(s.plan||'')}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="sec">
+        <div class="sec-hdr"><span class="icon">📅</span><span class="title">Nästa session</span></div>
+        <div class="sec-body">
+          <div class="row">
+            <div>
+              <label class="form-label">Datum för uppföljning</label>
+              <input type="date" class="input" id="next-date" value="${s.next_session_date||''}">
+            </div>
+            <div>
+              <label class="form-label">Mätbart resultat</label>
+              <input type="text" class="input" id="measurable" placeholder="T.ex. 'Använda delaccept i 80% av samtalen'" value="${esc(s.measurable_result||'')}">
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      ${s.status!=='done'?`
+        <div style="background:linear-gradient(135deg,var(--g),var(--gd));color:#fff;border-radius:12px;padding:16px 20px;margin-top:1.5rem;">
+          <div style="font-size:13px;margin-bottom:12px;">När coachningen är klar – tryck "Avsluta session" så skickas mail med summering och tidsåtgång till dig och säljaren.</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-gold btn-lg" onclick="endSession()">✅ Avsluta session & skicka mail</button>
+            <button class="btn btn-s btn-lg" onclick="saveCoachDraft()">💾 Spara & fortsätt senare</button>
+            <span style="font-size:12px;opacity:.85;margin-left:auto;">Sessionstid: <strong id="tdisp-bottom">${fmt(S.timerSeconds)}</strong></span>
+          </div>
+        </div>
+      `:`<div style="background:#EEEDFE;border-radius:12px;padding:16px 20px;color:#534AB7;text-align:center;font-weight:600;">✓ Session avslutad ${fmtDate(s.ended_at)} · Tog ${fmt(s.session_duration_seconds||0)}</div>`}
+    `;
+  }
+  
+  m.innerHTML=html;
+  
+  // Sync timer between top and bottom
+  if(S.timerInterval){
+    setInterval(()=>{
+      const b=document.getElementById('tdisp-bottom');
+      if(b)b.textContent=fmt(S.timerSeconds);
+    },1000);
+  }
+  
+  // Load audio if exists
+  if(s.call_audio_path)wireAudio(s.id);
+}
+
+async function wireAudio(sid){
+  const s=S.currentSession;
+  if(!s.call_audio_path)return;
+  const {data}=await sb.storage.from('feedback-audio').createSignedUrl(s.call_audio_path,3600);
+  if(!data?.signedUrl)return;
+  const audio=document.getElementById('audio-'+sid);
+  audio.src=data.signedUrl;
+  const fill=document.getElementById('apf-'+sid);
+  const time=document.getElementById('at-'+sid);
+  audio.addEventListener('timeupdate',()=>{
+    if(audio.duration){
+      fill.style.width=((audio.currentTime/audio.duration)*100)+'%';
+      time.textContent=fmt(audio.currentTime)+' / '+fmt(audio.duration);
+    }
+  });
+  audio.addEventListener('loadedmetadata',()=>{
+    time.textContent='0:00 / '+fmt(audio.duration);
+  });
+}
+
+function playAudio(path,sid){
+  const audio=document.getElementById('audio-'+sid);
+  if(!audio)return;
+  if(audio.paused)audio.play();else audio.pause();
+}
+
+// === SELLER ACTIONS ===
+async function saveSellerDraft(){
+  const summary=document.getElementById('seller-summary')?.value||'';
+  const answers={};
+  document.querySelectorAll('textarea[data-key]').forEach(t=>{answers[t.dataset.key]=t.value;});
+  const {error}=await sb.from('feedback_sessions').update({
+    seller_summary:summary,
+    seller_answers:answers,
+    updated_at:new Date().toISOString()
+  }).eq('id',S.currentSession.id);
+  if(error){toast('Fel: '+error.message,'err');return;}
+  toast('💾 Sparat');
+}
+
+async function submitSellerAnswers(){
+  const summary=document.getElementById('seller-summary')?.value||'';
+  if(!summary.trim()){toast('Skriv en sammanfattning först','err');return;}
+  const answers={};
+  document.querySelectorAll('textarea[data-key]').forEach(t=>{answers[t.dataset.key]=t.value;});
+  const {error}=await sb.from('feedback_sessions').update({
+    seller_summary:summary,
+    seller_answers:answers,
+    status:'waiting_coach',
+    updated_at:new Date().toISOString()
+  }).eq('id',S.currentSession.id);
+  if(error){toast('Fel: '+error.message,'err');return;}
+  toast('✅ Skickat till coachen!');
+  await loadData();
+  goView('list');
+}
+
+// === COACH ACTIONS ===
+async function saveCoachDraft(){
+  const answers={};
+  document.querySelectorAll('textarea[data-key]').forEach(t=>{answers[t.dataset.key]=t.value;});
+  const update={
+    coach_answers:answers,
+    styrka:document.getElementById('smp-styrka')?.value||'',
+    mal:document.getElementById('smp-mal')?.value||'',
+    plan:document.getElementById('smp-plan')?.value||'',
+    next_session_date:document.getElementById('next-date')?.value||null,
+    measurable_result:document.getElementById('measurable')?.value||'',
+    session_duration_seconds:S.timerSeconds,
+    updated_at:new Date().toISOString()
+  };
+  const {error}=await sb.from('feedback_sessions').update(update).eq('id',S.currentSession.id);
+  if(error){toast('Fel: '+error.message,'err');return;}
+  toast('💾 Sparat');
+}
+
+async function endSession(){
+  if(!confirm('Avsluta sessionen och skicka mail-sammanfattning?'))return;
+  
+  const answers={};
+  document.querySelectorAll('textarea[data-key]').forEach(t=>{answers[t.dataset.key]=t.value;});
+  
+  const update={
+    coach_answers:answers,
+    styrka:document.getElementById('smp-styrka')?.value||'',
+    mal:document.getElementById('smp-mal')?.value||'',
+    plan:document.getElementById('smp-plan')?.value||'',
+    next_session_date:document.getElementById('next-date')?.value||null,
+    measurable_result:document.getElementById('measurable')?.value||'',
+    session_duration_seconds:S.timerSeconds,
+    status:'done',
+    ended_at:new Date().toISOString(),
+    updated_at:new Date().toISOString()
+  };
+  
+  const {error}=await sb.from('feedback_sessions').update(update).eq('id',S.currentSession.id);
+  if(error){toast('Fel: '+error.message,'err');return;}
+  
+  if(S.timerInterval){clearInterval(S.timerInterval);S.timerInterval=null;}
+  
+  // Trigger mail (Edge Function)
+  try{
+    await sb.functions.invoke('send-feedback-summary',{body:{session_id:S.currentSession.id}});
+  }catch(e){console.warn('Mail-funktion ej tillgänglig:',e);}
+  
+  S.currentSession={...S.currentSession,...update};
+  await loadData();
+  S.view='done';
+  render();
+}
+
+function rDone(m){
+  const s=S.currentSession;
+  m.innerHTML=`
+    <div style="text-align:center;padding:1rem 0;margin-bottom:1.5rem;">
+      <div style="font-size:48px;">✅</div>
+      <h2 style="font-size:22px;color:var(--gd);margin:.5rem 0;">Sessionen är avslutad!</h2>
+      <p style="color:var(--mu);font-size:13px;">Sammanfattnings-mail har skickats till dig och säljaren.</p>
+    </div>
+    
+    <div class="mail-preview">
+      <div class="mail-from">📧 Mail-sammanfattning</div>
+      <div class="mail-subject">Feedback-session – ${esc(s.call_title)}</div>
+      <div class="mail-stat-row"><span style="color:var(--mu);">Sessionstid:</span><strong>${fmt(s.session_duration_seconds)}</strong></div>
+      <div class="mail-stat-row"><span style="color:var(--mu);">Säljare:</span><strong>${esc(s.sellers?.name||'')}</strong></div>
+      <div class="mail-stat-row"><span style="color:var(--mu);">Datum:</span><strong>${fmtDate(s.ended_at)}</strong></div>
+      ${s.next_session_date?`<div class="mail-stat-row"><span style="color:var(--mu);">Nästa session:</span><strong>${fmtDate(s.next_session_date)}</strong></div>`:''}
+      
+      ${s.styrka?`<div style="margin-top:14px;"><strong style="color:#0F6E56;">🌟 STYRKA:</strong> ${esc(s.styrka)}</div>`:''}
+      ${s.mal?`<div style="margin-top:8px;"><strong style="color:#854F0B;">🎯 MÅL:</strong> ${esc(s.mal)}</div>`:''}
+      ${s.plan?`<div style="margin-top:8px;"><strong style="color:#534AB7;">📋 PLAN:</strong> ${esc(s.plan)}</div>`:''}
+    </div>
+    
+    <button class="btn btn-lg" onclick="goView('list')">← Tillbaka till sessioner</button>
+  `;
+}
+
+// === NEW SESSION ===
+function rNew(m){
+  if(!S.isCoach){m.innerHTML='<div class="empty">Endast coach/admin kan skapa sessioner</div>';return;}
+  
+  m.innerHTML=`
+    <button class="btn btn-s" style="margin-bottom:1rem;" onclick="goView('list')">← Tillbaka</button>
+    
+    <div class="ph">
+      <div>
+        <div class="ph-t">➕ Skapa ny feedback-session</div>
+        <div class="ph-s">Välj säljare, ladda upp samtal och skriv specifika frågor</div>
+      </div>
+    </div>
+    
+    <div class="sec">
+      <div class="sec-hdr"><span class="title">📋 Grunduppgifter</span></div>
+      <div class="sec-body">
+        <div class="row" style="margin-bottom:14px;">
+          <div>
+            <label class="form-label">Säljare *</label>
+            <select class="select" id="ns-seller">
+              <option value="">— Välj säljare —</option>
+              ${S.sellers.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Samtalets längd</label>
+            <input type="text" class="input" id="ns-duration" placeholder="T.ex. 8:32">
+          </div>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Titel på sessionen *</label>
+          <input type="text" class="input" id="ns-title" placeholder="T.ex. Catherine-fallet, prisinvändning">
+        </div>
+        <div class="form-section">
+          <label class="form-label">Ladda upp ljudfil</label>
+          <input type="file" class="input" id="ns-audio" accept="audio/*">
+          <div class="form-help">Filen sparas privat. Säljaren kan lyssna men inte ladda ner.</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="sec">
+      <div class="sec-hdr"><span class="title">💬 Specifika frågor till säljaren (3–5 stycken)</span></div>
+      <div class="sec-body">
+        <div class="form-help">Skriv frågor om just detta samtal. Använd tidsstämplar (t.ex. "vid 2:15") för att ge kontext.</div>
+        <div id="cq-list"></div>
+        <button class="btn btn-s" onclick="addCQ()" style="margin-top:8px;">+ Lägg till fråga</button>
+      </div>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-top:1.5rem;">
+      <button class="btn btn-lg" onclick="saveNewSession()">📤 Skicka till säljaren</button>
+      <button class="btn btn-s btn-lg" onclick="goView('list')">Avbryt</button>
+    </div>
+  `;
+  
+  // Initial 3 frågor
+  for(let i=0;i<3;i++)addCQ();
+}
+
+let cqCounter=0;
+function addCQ(){
+  cqCounter++;
+  const list=document.getElementById('cq-list');
+  if(!list)return;
+  const div=document.createElement('div');
+  div.className='q-card q-shared';
+  div.innerHTML=`
+    <div class="row" style="margin-bottom:6px;grid-template-columns:120px 1fr;">
+      <input type="text" class="input cq-time" placeholder="T.ex. 2:15" style="font-size:12px;">
+      <input type="text" class="input cq-q" placeholder="Frågan...">
+    </div>
+    <input type="text" class="input cq-rat" placeholder="(valfritt) Tanken bakom frågan – för dig själv" style="font-size:12px;">
+  `;
+  list.appendChild(div);
+}
+
+async function saveNewSession(){
+  const sellerId=document.getElementById('ns-seller').value;
+  const title=document.getElementById('ns-title').value.trim();
+  const duration=document.getElementById('ns-duration').value.trim();
+  const audioFile=document.getElementById('ns-audio').files[0];
+  
+  if(!sellerId||!title){toast('Välj säljare och skriv titel','err');return;}
+  
+  const cqs=[];
+  document.querySelectorAll('#cq-list .q-card').forEach(c=>{
+    const time=c.querySelector('.cq-time').value.trim();
+    const q=c.querySelector('.cq-q').value.trim();
+    const rat=c.querySelector('.cq-rat').value.trim();
+    if(q)cqs.push({time,q,rationale:rat});
+  });
+  
+  if(cqs.length===0){toast('Lägg till minst en fråga','err');return;}
+  
+  toast('⏳ Skapar session...');
+  
+  let audioPath=null;
+  if(audioFile){
+    const ext=audioFile.name.split('.').pop();
+    const path=`${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const {error:upErr}=await sb.storage.from('feedback-audio').upload(path,audioFile);
+    if(upErr){toast('Uppladdning misslyckades: '+upErr.message,'err');return;}
+    audioPath=path;
+  }
+  
+  const {data,error}=await sb.from('feedback_sessions').insert({
+    seller_id:sellerId,
+    coach_id:S.user.id,
+    call_title:title,
+    call_duration:duration||null,
+    call_audio_path:audioPath,
+    coach_questions:cqs,
+    status:'waiting_seller'
+  }).select().single();
+  
+  if(error){toast('Fel: '+error.message,'err');return;}
+  
+  toast('✅ Session skapad och skickad till säljaren!');
+  await loadData();
+  goView('list');
+}
+
+// === SELLERS MGMT ===
+function rSellers(m){
+  if(!S.isCoach){m.innerHTML='<div class="empty">Endast coach/admin</div>';return;}
+  
+  m.innerHTML=`
+    <div class="ph">
+      <div>
+        <div class="ph-t">👥 Säljare</div>
+        <div class="ph-s">${S.sellers.length} aktiva säljare · lägg till nya nedan</div>
+      </div>
+      <button class="btn" onclick="addSellerModal()">+ Lägg till säljare</button>
+    </div>
+    
+    <div class="sec">
+      <div class="sec-body" style="padding:0;">
+        ${S.sellers.length===0?'<div class="empty">Inga säljare ännu</div>':S.sellers.map(s=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--br);">
+            <div>
+              <div style="font-weight:600;color:var(--gd);">${esc(s.name)}</div>
+              <div style="font-size:11px;color:var(--mu);">${s.user_id?'Kopplad till login':'Ingen login-koppling'}</div>
+            </div>
+            <button class="btn btn-s btn-err" onclick="removeSeller('${s.id}','${esc(s.name)}')">Ta bort</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function addSellerModal(){
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.id='add-seller-overlay';
+  overlay.innerHTML=`
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <div class="modal-title">+ Lägg till säljare</div>
+        <button class="modal-close" onclick="document.getElementById('add-seller-overlay').remove()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <label class="form-label">Namn *</label>
+          <input type="text" class="input" id="new-seller-name" placeholder="T.ex. Anders Tengvall">
+        </div>
+      </div>
+      <div class="modal-ftr">
+        <button class="btn btn-s" onclick="document.getElementById('add-seller-overlay').remove()">Avbryt</button>
+        <button class="btn" onclick="saveNewSeller()">Spara</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+async function saveNewSeller(){
+  const name=document.getElementById('new-seller-name').value.trim();
+  if(!name){toast('Skriv ett namn','err');return;}
+  const {error}=await sb.from('sellers').insert({name,active:true});
+  if(error){toast('Fel: '+error.message,'err');return;}
+  document.getElementById('add-seller-overlay').remove();
+  toast('✅ Säljare tillagd');
+  await loadData();
+  render();
+}
+
+async function removeSeller(id,name){
+  if(!confirm(`Ta bort säljaren "${name}"?\n\nDeras feedback-sessioner finns kvar men markeras som "tagna bort".`))return;
+  const {error}=await sb.from('sellers').update({active:false}).eq('id',id);
+  if(error){toast('Fel: '+error.message,'err');return;}
+  toast('✅ Säljare borttagen');
+  await loadData();
+  render();
+}
+
+// === QUESTIONS ADMIN ===
+function rQuestions(m){
+  if(!S.isCoach){m.innerHTML='<div class="empty">Endast coach/admin</div>';return;}
+  
+  const shared=S.questions.filter(q=>q.question_type==='shared');
+  const seller=S.questions.filter(q=>q.question_type==='seller');
+  const coach=S.questions.filter(q=>q.question_type==='coach');
+  
+  m.innerHTML=`
+    <div class="ph">
+      <div>
+        <div class="ph-t">❓ Frågor i feedback-sessioner</div>
+        <div class="ph-s">Redigera, lägg till eller ta bort frågor som visas i alla sessioner</div>
+      </div>
+    </div>
+    
+    <div class="sec">
+      <div class="sec-hdr"><span class="icon" style="color:var(--gt);">●</span><span class="title">Gemensamma frågor (säljaren OCH coachen svarar)</span><button class="btn btn-s" onclick="newQuestion('shared')">+ Lägg till</button></div>
+      <div class="sec-body" id="qlist-shared">${rQList(shared)}</div>
+    </div>
+    
+    <div class="sec">
+      <div class="sec-hdr"><span class="icon" style="color:var(--gold);">●</span><span class="title">Säljar-specifika frågor (bara säljaren svarar)</span><button class="btn btn-s" onclick="newQuestion('seller')">+ Lägg till</button></div>
+      <div class="sec-body" id="qlist-seller">${rQList(seller)}</div>
+    </div>
+    
+    <div class="sec">
+      <div class="sec-hdr"><span class="icon" style="color:#534AB7;">●</span><span class="title">Coach-frågor (bara coachen svarar)</span><button class="btn btn-s" onclick="newQuestion('coach')">+ Lägg till</button></div>
+      <div class="sec-body" id="qlist-coach">${rQList(coach)}</div>
+    </div>
+  `;
+}
+
+function rQList(qs){
+  if(qs.length===0)return '<div class="empty" style="padding:1.5rem;">Inga frågor – klicka "Lägg till" ovan</div>';
+  return qs.map(q=>`
+    <div class="q-admin-card">
+      <div class="q-admin-row">
+        <div class="q-admin-content">
+          <div style="font-weight:600;color:var(--gd);font-size:13px;margin-bottom:4px;">${esc(q.question)}</div>
+          ${q.rationale?`<div style="font-size:11px;color:var(--mu);font-style:italic;">💭 ${esc(q.rationale)}</div>`:''}
+        </div>
+        <div class="q-admin-actions">
+          <button class="btn btn-s" onclick="editQuestion('${q.id}')">✏️</button>
+          <button class="btn btn-s btn-err" onclick="deleteQuestion('${q.id}')">🗑</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function newQuestion(type){
+  questionModal({question_type:type,question:'',rationale:'',sort_order:S.questions.filter(q=>q.question_type===type).length+1});
+}
+
+function editQuestion(id){
+  const q=S.questions.find(x=>x.id===id);
+  if(q)questionModal(q);
+}
+
+function questionModal(q){
+  const isNew=!q.id;
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.id='q-modal';
+  overlay.innerHTML=`
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <div class="modal-title">${isNew?'+ Ny':'✏️ Redigera'} fråga (${q.question_type==='shared'?'gemensam':q.question_type==='seller'?'säljare':'coach'})</div>
+        <button class="modal-close" onclick="document.getElementById('q-modal').remove()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <label class="form-label">Frågan</label>
+          <textarea class="textarea" id="q-question" placeholder="Skriv frågan här...">${esc(q.question||'')}</textarea>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Tanken bakom (valfritt)</label>
+          <textarea class="textarea" id="q-rationale" placeholder="Varför ställs denna fråga?">${esc(q.rationale||'')}</textarea>
+          <div class="form-help">Detta visas under frågan som hjälp för coachen/säljaren.</div>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Sorteringsordning</label>
+          <input type="number" class="input" id="q-order" value="${q.sort_order||1}" min="1">
+        </div>
+      </div>
+      <div class="modal-ftr">
+        <button class="btn btn-s" onclick="document.getElementById('q-modal').remove()">Avbryt</button>
+        <button class="btn" onclick="saveQuestion('${q.id||''}','${q.question_type}')">${isNew?'Skapa':'Spara'}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+async function saveQuestion(id,type){
+  const data={
+    question_type:type,
+    question:document.getElementById('q-question').value.trim(),
+    rationale:document.getElementById('q-rationale').value.trim()||null,
+    sort_order:parseInt(document.getElementById('q-order').value)||1,
+    active:true,
+    updated_at:new Date().toISOString()
+  };
+  if(!data.question){toast('Skriv en fråga','err');return;}
+  
+  let res;
+  if(id){
+    res=await sb.from('feedback_questions').update(data).eq('id',id);
+  } else {
+    res=await sb.from('feedback_questions').insert(data);
+  }
+  if(res.error){toast('Fel: '+res.error.message,'err');return;}
+  document.getElementById('q-modal').remove();
+  toast('✅ Sparad');
+  await loadData();
+  render();
+}
+
+async function deleteQuestion(id){
+  const q=S.questions.find(x=>x.id===id);
+  if(!confirm(`Ta bort frågan "${q?.question}"?`))return;
+  const {error}=await sb.from('feedback_questions').delete().eq('id',id);
+  if(error){toast('Fel: '+error.message,'err');return;}
+  toast('✅ Borttagen');
+  await loadData();
+  render();
+}
+
+// === LOGOUT ===
+async function logout(){
+  if(!confirm('Logga ut?'))return;
+  await sb.auth.signOut();
+  location.reload();
+}
+
+// === BOOT ===
+init();
+</script>
+</body>
+</html>
