@@ -247,8 +247,9 @@ function renderLogin(){
         <div class="login-sub">Logga in med ditt SmartID-konto</div>
         <form id="login-form">
           <div class="form-section">
-            <label class="form-label">E-post</label>
-            <input type="email" id="login-email" class="input" required>
+            <label class="form-label">Användarnamn eller e-post</label>
+            <input type="text" id="login-email" class="input" required placeholder="t.ex. anders eller anders@smartid.se">
+            <div class="form-help" style="margin-top:4px;">Säljare: skriv bara ditt användarnamn. Admin: använd din e-post.</div>
           </div>
           <div class="form-section">
             <label class="form-label">Lösenord</label>
@@ -262,12 +263,23 @@ function renderLogin(){
   `;
   document.getElementById('login-form').onsubmit=async(e)=>{
     e.preventDefault();
-    const email=document.getElementById('login-email').value;
+    let identifier=document.getElementById('login-email').value.trim();
     const pwd=document.getElementById('login-pwd').value;
     const errEl=document.getElementById('login-err');
     errEl.style.display='none';
+    
+    // Om det inte är en e-post (saknar @), behandla som användarnamn
+    let email=identifier;
+    if(!identifier.includes('@')){
+      email=identifier.toLowerCase()+'@smartid.local';
+    }
+    
     const {error}=await sb.auth.signInWithPassword({email,password:pwd});
-    if(error){errEl.style.display='block';errEl.textContent='Fel e-post eller lösenord';return;}
+    if(error){
+      errEl.style.display='block';
+      errEl.textContent='Fel användarnamn/e-post eller lösenord';
+      return;
+    }
     init();
   };
 }
@@ -944,24 +956,45 @@ async function saveNewSession(){
 function rSellers(m){
   if(!S.isCoach){m.innerHTML='<div class="empty">Endast coach/admin</div>';return;}
   
+  // Sortera: utan inlogg först, sedan med inlogg
+  const sorted=[...S.sellers].sort((a,b)=>{
+    if(!a.user_id&&b.user_id)return -1;
+    if(a.user_id&&!b.user_id)return 1;
+    return a.name.localeCompare(b.name);
+  });
+  
+  const withLogin=S.sellers.filter(s=>s.user_id).length;
+  const withoutLogin=S.sellers.length-withLogin;
+  
   m.innerHTML=`
     <div class="ph">
       <div>
         <div class="ph-t">👥 Säljare</div>
-        <div class="ph-s">${S.sellers.length} aktiva säljare · lägg till nya nedan</div>
+        <div class="ph-s">${S.sellers.length} aktiva · ${withLogin} har inlogg · ${withoutLogin} saknar inlogg</div>
       </div>
       <button class="btn" onclick="addSellerModal()">+ Lägg till säljare</button>
     </div>
     
+    ${withoutLogin>0?`
+      <div style="background:#FAEEDA;border-left:4px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:1rem;font-size:13px;line-height:1.6;">
+        <strong style="color:#854F0B;">⚠️ ${withoutLogin} säljare saknar inloggning</strong> – de kan inte logga in i appen ännu. Klicka "Skapa inlogg" på varje rad för att ge dem användarnamn + lösenord.
+      </div>
+    `:''}
+    
     <div class="sec">
       <div class="sec-body" style="padding:0;">
-        ${S.sellers.length===0?'<div class="empty">Inga säljare ännu</div>':S.sellers.map(s=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--br);">
-            <div>
+        ${sorted.length===0?'<div class="empty">Inga säljare ännu</div>':sorted.map(s=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--br);gap:10px;">
+            <div style="flex:1;min-width:0;">
               <div style="font-weight:600;color:var(--gd);">${esc(s.name)}</div>
-              <div style="font-size:11px;color:var(--mu);">${s.user_id?'Kopplad till login':'Ingen login-koppling'}</div>
+              <div style="font-size:11px;color:${s.user_id?'#0F6E56':'var(--err)'};">
+                ${s.user_id?'✓ Har inloggning':'✗ Saknar inloggning'}
+              </div>
             </div>
-            <button class="btn btn-s btn-err" onclick="removeSeller('${s.id}','${esc(s.name)}')">Ta bort</button>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              ${!s.user_id?`<button class="btn btn-s btn-gold" onclick="createSellerLogin('${s.id}','${esc(s.name)}')">🔑 Skapa inlogg</button>`:`<button class="btn btn-s" onclick="resetSellerPassword('${s.id}','${esc(s.name)}')">🔄 Nytt lösenord</button>`}
+              <button class="btn btn-s btn-err" onclick="removeSeller('${s.id}','${esc(s.name)}')">Ta bort</button>
+            </div>
           </div>
         `).join('')}
       </div>
@@ -969,6 +1002,15 @@ function rSellers(m){
   `;
 }
 
+// === HJÄLPFUNKTION: Konvertera namn till användarnamn (säkert format) ===
+function nameToUsername(name){
+  return name.toLowerCase()
+    .replace(/å/g,'a').replace(/ä/g,'a').replace(/ö/g,'o')
+    .replace(/[^a-z0-9]/g,'')
+    .substring(0,20);
+}
+
+// === ADD SELLER MODAL ===
 function addSellerModal(){
   const overlay=document.createElement('div');
   overlay.className='modal-overlay';
@@ -982,7 +1024,28 @@ function addSellerModal(){
       <div class="modal-body">
         <div class="form-section">
           <label class="form-label">Namn *</label>
-          <input type="text" class="input" id="new-seller-name" placeholder="T.ex. Anders Tengvall">
+          <input type="text" class="input" id="new-seller-name" placeholder="T.ex. Anders Tengvall" oninput="updateUsernamePreview()">
+        </div>
+        
+        <div style="background:var(--bg);border-radius:8px;padding:12px;margin-top:14px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <input type="checkbox" id="new-seller-create-login" checked style="width:16px;height:16px;cursor:pointer;accent-color:var(--g);">
+            <label for="new-seller-create-login" style="font-size:13px;font-weight:600;color:var(--gd);cursor:pointer;">Skapa inloggning samtidigt</label>
+          </div>
+          
+          <div id="login-fields">
+            <div class="form-section" style="margin-bottom:10px;">
+              <label class="form-label">Användarnamn (auto-genererat)</label>
+              <div id="username-preview" style="font-family:monospace;background:var(--w);border:1px solid var(--br);border-radius:6px;padding:8px 10px;font-size:13px;color:var(--gd);">—</div>
+              <div class="form-help" style="margin-top:4px;">Säljaren använder detta för att logga in</div>
+            </div>
+            
+            <div class="form-section">
+              <label class="form-label">Lösenord *</label>
+              <input type="text" class="input" id="new-seller-password" placeholder="Minst 6 tecken" value="smartid${Math.floor(1000+Math.random()*9000)}">
+              <div class="form-help" style="margin-top:4px;">📝 Spara detta lösenord och ge till säljaren!</div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-ftr">
@@ -992,17 +1055,180 @@ function addSellerModal(){
     </div>
   `;
   document.body.appendChild(overlay);
+  // Toggle login fields
+  document.getElementById('new-seller-create-login').onchange=(e)=>{
+    document.getElementById('login-fields').style.display=e.target.checked?'block':'none';
+  };
+}
+
+function updateUsernamePreview(){
+  const name=document.getElementById('new-seller-name').value;
+  const username=nameToUsername(name);
+  const preview=document.getElementById('username-preview');
+  if(preview)preview.textContent=username||'—';
 }
 
 async function saveNewSeller(){
   const name=document.getElementById('new-seller-name').value.trim();
   if(!name){toast('Skriv ett namn','err');return;}
-  const {error}=await sb.from('sellers').insert({name,active:true});
+  
+  const createLogin=document.getElementById('new-seller-create-login').checked;
+  
+  // Insert seller record
+  const {data:newSeller,error}=await sb.from('sellers').insert({name,active:true}).select().single();
   if(error){toast('Fel: '+error.message,'err');return;}
-  document.getElementById('add-seller-overlay').remove();
-  toast('✅ Säljare tillagd');
+  
+  // Optionally create login
+  if(createLogin){
+    const password=document.getElementById('new-seller-password').value.trim();
+    if(!password||password.length<6){
+      toast('Säljaren skapad men inlogg saknas (lösenord för kort)','err');
+      document.getElementById('add-seller-overlay').remove();
+      await loadData();render();
+      return;
+    }
+    
+    const username=nameToUsername(name);
+    const email=username+'@smartid.local';
+    
+    const {data:authData,error:authErr}=await sb.auth.signUp({
+      email,
+      password,
+      options:{data:{username,name}}
+    });
+    
+    if(authErr){
+      toast('Säljare skapad, men inlogg misslyckades: '+authErr.message,'err');
+    } else if(authData?.user){
+      // Koppla säljaren till user_id
+      await sb.from('sellers').update({user_id:authData.user.id}).eq('id',newSeller.id);
+      toast('✅ Säljare och inlogg skapad!');
+      // Visa credentials
+      showCredentials(name,username,password);
+    }
+  } else {
+    toast('✅ Säljare tillagd');
+  }
+  
+  document.getElementById('add-seller-overlay')?.remove();
   await loadData();
   render();
+}
+
+// === SKAPA INLOGG FÖR BEFINTLIG SÄLJARE ===
+function createSellerLogin(sellerId,sellerName){
+  const username=nameToUsername(sellerName);
+  const password='smartid'+Math.floor(1000+Math.random()*9000);
+  
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.id='create-login-overlay';
+  overlay.innerHTML=`
+    <div class="modal-box">
+      <div class="modal-hdr">
+        <div class="modal-title">🔑 Skapa inlogg för ${esc(sellerName)}</div>
+        <button class="modal-close" onclick="document.getElementById('create-login-overlay').remove()">×</button>
+      </div>
+      <div class="modal-body">
+        <div style="background:#E1F5EE;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:#0F6E56;">
+          ℹ️ Säljaren får ett användarnamn (auto-genererat) och ett lösenord. Spara dessa och ge till säljaren!
+        </div>
+        
+        <div class="form-section">
+          <label class="form-label">Användarnamn</label>
+          <div style="font-family:monospace;background:var(--bg);border:1px solid var(--br);border-radius:6px;padding:10px 12px;font-size:14px;color:var(--gd);font-weight:600;">${username}</div>
+        </div>
+        
+        <div class="form-section">
+          <label class="form-label">Lösenord</label>
+          <input type="text" class="input" id="cl-password" value="${password}" style="font-family:monospace;font-size:14px;font-weight:600;">
+          <div class="form-help" style="margin-top:4px;">Du kan ändra detta innan du klickar "Skapa"</div>
+        </div>
+      </div>
+      <div class="modal-ftr">
+        <button class="btn btn-s" onclick="document.getElementById('create-login-overlay').remove()">Avbryt</button>
+        <button class="btn" onclick="confirmCreateLogin('${sellerId}','${esc(sellerName)}','${username}')">🔑 Skapa inlogg</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+async function confirmCreateLogin(sellerId,sellerName,username){
+  const password=document.getElementById('cl-password').value.trim();
+  if(!password||password.length<6){toast('Lösenord måste vara minst 6 tecken','err');return;}
+  
+  const email=username+'@smartid.local';
+  
+  toast('⏳ Skapar konto...');
+  
+  const {data:authData,error:authErr}=await sb.auth.signUp({
+    email,
+    password,
+    options:{data:{username,name:sellerName}}
+  });
+  
+  if(authErr){toast('Fel: '+authErr.message,'err');return;}
+  if(!authData?.user){toast('Konto skapades inte','err');return;}
+  
+  // Koppla säljaren
+  const {error:linkErr}=await sb.from('sellers').update({user_id:authData.user.id}).eq('id',sellerId);
+  if(linkErr){toast('Konto skapat men koppling misslyckades: '+linkErr.message,'err');return;}
+  
+  document.getElementById('create-login-overlay').remove();
+  showCredentials(sellerName,username,password);
+  await loadData();
+  render();
+}
+
+// === VISA CREDENTIALS ===
+function showCredentials(name,username,password){
+  const overlay=document.createElement('div');
+  overlay.className='modal-overlay';
+  overlay.innerHTML=`
+    <div class="modal-box" style="max-width:480px;">
+      <div class="modal-hdr">
+        <div class="modal-title">✅ Inlogg skapad för ${esc(name)}</div>
+      </div>
+      <div class="modal-body">
+        <div style="background:#E1F5EE;border-left:4px solid var(--g);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:13px;color:#0F6E56;line-height:1.6;">
+          <strong>📝 Spara dessa uppgifter och ge till säljaren!</strong><br>
+          Säljaren öppnar samma URL och loggar in med dessa.
+        </div>
+        
+        <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:14px;">
+          <div style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Användarnamn</div>
+          <div style="font-family:monospace;font-size:16px;font-weight:700;color:var(--gd);margin-bottom:14px;user-select:all;">${esc(username)}</div>
+          
+          <div style="font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Lösenord</div>
+          <div style="font-family:monospace;font-size:16px;font-weight:700;color:var(--gd);user-select:all;">${esc(password)}</div>
+        </div>
+        
+        <button class="btn" style="width:100%;" onclick="copyCredentials('${esc(username)}','${esc(password)}')">📋 Kopiera båda till urklipp</button>
+      </div>
+      <div class="modal-ftr">
+        <button class="btn btn-lg" onclick="this.closest('.modal-overlay').remove()" style="width:100%;">Klar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function copyCredentials(username,password){
+  const text=`Användarnamn: ${username}\nLösenord: ${password}\nLogga in på: ${window.location.origin}${window.location.pathname}`;
+  navigator.clipboard.writeText(text).then(()=>toast('📋 Kopierat!')).catch(()=>toast('Kopiering misslyckades','err'));
+}
+
+// === ÅTERSTÄLL LÖSENORD ===
+async function resetSellerPassword(sellerId,sellerName){
+  const newPwd='smartid'+Math.floor(1000+Math.random()*9000);
+  if(!confirm(`Generera nytt lösenord för ${sellerName}?\n\nNytt lösenord: ${newPwd}\n\nObs: Detta kräver service-role-tillgång. Om det inte fungerar, be säljaren själv att återställa via "Glömt lösenord" eller kontakta admin.`))return;
+  
+  // Note: password update requires admin/service role - this is a simplified version
+  const seller=S.sellers.find(s=>s.id===sellerId);
+  if(!seller?.user_id){toast('Säljaren saknar inlogg','err');return;}
+  
+  toast('ℹ️ Lösenordsåterställning kräver service-role-API. Be säljaren logga in med befintligt lösenord, eller skapa inlogg igen.','err');
 }
 
 async function removeSeller(id,name){
