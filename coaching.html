@@ -1370,4 +1370,20 @@ async function deleteQuestion(id){
   if(!confirm(`Ta bort frågan "${q?.question}"?`))return;
   const {error}=await sb.from('feedback_questions').delete().eq('id',id);
   if(error){toast('Fel: '+error.message,'err');return;}
-  t
+  toast('✅ Borttagen');
+  await loadData();
+  render();
+}
+
+// === LOGOUT ===
+async function logout(){
+  if(!confirm('Logga ut?'))return;
+  await sb.auth.signOut();
+  location.reload();
+}
+
+// === BOOT ===
+init();
+</script>
+</body>
+</html>
