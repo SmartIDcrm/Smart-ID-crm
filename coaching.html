@@ -347,6 +347,12 @@ function render(){
 }
 
 function goView(v){
+  // SÄKERHET: Säljare får BARA gå till 'list', 'session' och 'done'
+  const adminViews=['new','sellers','questions'];
+  if(adminViews.includes(v) && !S.isCoach){
+    toast('Du har inte behörighet för denna vy','err');
+    return;
+  }
   if(S.timerInterval){clearInterval(S.timerInterval);S.timerInterval=null;}
   S.view=v;
   S.currentSession=null;
@@ -1364,20 +1370,4 @@ async function deleteQuestion(id){
   if(!confirm(`Ta bort frågan "${q?.question}"?`))return;
   const {error}=await sb.from('feedback_questions').delete().eq('id',id);
   if(error){toast('Fel: '+error.message,'err');return;}
-  toast('✅ Borttagen');
-  await loadData();
-  render();
-}
-
-// === LOGOUT ===
-async function logout(){
-  if(!confirm('Logga ut?'))return;
-  await sb.auth.signOut();
-  location.reload();
-}
-
-// === BOOT ===
-init();
-</script>
-</body>
-</html>
+  t
