@@ -422,7 +422,7 @@ function renderSL(){
           <span>👤 ${esc(s.sellers?.name||'–')}</span>
           ${s.call_duration?`<span>🎧 ${s.call_duration}</span>`:''}
           <span>📅 ${fmtDate(s.created_at)}</span>
-          ${s.session_duration_seconds?`<span>⏱ ${fmt(s.session_duration_seconds)}</span>`:''}
+          ''
         </div>
       </div>
       <div class="status-pill s-${s.status}">
@@ -470,10 +470,8 @@ function rSession(m){
     </div>
     
     ${S.isCoach&&s.status!=='done'?`
-      <div class="timer-bar">
-        <div><span class="timer-pulse"></span><span class="timer-label">Sessionstid (löper för coachen)</span></div>
-        <div class="timer-time" id="tdisp">${fmt(S.timerSeconds)}</div>
-      </div>
+      <!-- Timer löper i bakgrunden, syns ej för coach. Tiden mailas till tl@/kt@ när session avslutas -->
+      <span id="tdisp" style="display:none;">${fmt(S.timerSeconds)}</span>
     `:''}
     
     ${s.call_audio_path?`
@@ -681,10 +679,10 @@ function rSession(m){
           <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
             <button class="btn btn-gold btn-lg" onclick="endSession()">✅ Avsluta session & skicka mail</button>
             <button class="btn btn-s btn-lg" onclick="saveCoachDraft()">💾 Spara & fortsätt senare</button>
-            <span style="font-size:12px;opacity:.85;margin-left:auto;">Sessionstid: <strong id="tdisp-bottom">${fmt(S.timerSeconds)}</strong></span>
+            <span id="tdisp-bottom" style="display:none;">${fmt(S.timerSeconds)}</span>
           </div>
         </div>
-      `:`<div style="background:#EEEDFE;border-radius:12px;padding:16px 20px;color:#534AB7;text-align:center;font-weight:600;">✓ Session avslutad ${fmtDate(s.ended_at)} · Tog ${fmt(s.session_duration_seconds||0)}</div>`}
+      `:`<div style="background:#EEEDFE;border-radius:12px;padding:16px 20px;color:#534AB7;text-align:center;font-weight:600;">✓ Session avslutad ${fmtDate(s.ended_at)}</div>`}
     `;
   }
   
@@ -860,7 +858,7 @@ function rDone(m){
     <div class="mail-preview">
       <div class="mail-from">📧 Mail-sammanfattning</div>
       <div class="mail-subject">Feedback-session – ${esc(s.call_title)}</div>
-      <div class="mail-stat-row"><span style="color:var(--mu);">Sessionstid:</span><strong>${fmt(s.session_duration_seconds)}</strong></div>
+      
       <div class="mail-stat-row"><span style="color:var(--mu);">Säljare:</span><strong>${esc(s.sellers?.name||'')}</strong></div>
       <div class="mail-stat-row"><span style="color:var(--mu);">Datum:</span><strong>${fmtDate(s.ended_at)}</strong></div>
       ${s.next_session_date?`<div class="mail-stat-row"><span style="color:var(--mu);">Nästa session:</span><strong>${fmtDate(s.next_session_date)}</strong></div>`:''}
