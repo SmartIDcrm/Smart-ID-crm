@@ -100,7 +100,10 @@ body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var
 .audio-play:hover{background:var(--gd);}
 .audio-info{flex:1;min-width:0;}
 .audio-title{font-size:13px;font-weight:600;color:var(--gd);}
-.audio-progress{height:4px;background:var(--br);border-radius:2px;margin-top:6px;cursor:pointer;}
+.audio-skip{background:var(--bg2);color:var(--gd);border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:13px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.audio-skip:hover{background:var(--g);color:#fff;transform:scale(1.05);}
+.audio-progress{height:8px;background:var(--br);border-radius:4px;margin-top:6px;cursor:pointer;position:relative;transition:height .15s;}
+.audio-progress:hover{height:10px;}
 .audio-bar-fill{height:100%;background:var(--g);border-radius:2px;width:0%;transition:width .12s linear;}
 .audio-time{font-size:11px;color:var(--mu);font-variant-numeric:tabular-nums;}
 
@@ -475,9 +478,11 @@ function rSession(m){
     
     ${s.call_audio_path?`
       <div class="audio-bar">
+        <button class="audio-skip" title="Spola tillbaka 10 sek" onclick="audioSeek('${s.id}',-10)">⏪</button>
         <button class="audio-play" onclick="playAudio('${s.call_audio_path}','${s.id}')">▶</button>
+        <button class="audio-skip" title="Spola fram 10 sek" onclick="audioSeek('${s.id}',10)">⏩</button>
         <div class="audio-info">
-          <div class="audio-title">📞 Inspelat samtal</div>
+          <div class="audio-title">📞 Inspelat samtal · klicka i listen för att spola</div>
           <div class="audio-progress" id="ap-${s.id}"><div class="audio-bar-fill" id="apf-${s.id}"></div></div>
         </div>
         <div class="audio-time" id="at-${s.id}">${s.call_duration||'0:00'}</div>
@@ -706,6 +711,7 @@ async function wireAudio(sid){
   audio.src=data.signedUrl;
   const fill=document.getElementById('apf-'+sid);
   const time=document.getElementById('at-'+sid);
+  const progress=document.getElementById('ap-'+sid);
   audio.addEventListener('timeupdate',()=>{
     if(audio.duration){
       fill.style.width=((audio.currentTime/audio.duration)*100)+'%';
@@ -715,6 +721,40 @@ async function wireAudio(sid){
   audio.addEventListener('loadedmetadata',()=>{
     time.textContent='0:00 / '+fmt(audio.duration);
   });
+  // === SPOLA: klick på progress-bar ===
+  if(progress){
+    progress.addEventListener('click',(e)=>{
+      if(!audio.duration)return;
+      const rect=progress.getBoundingClientRect();
+      const pct=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+      audio.currentTime=audio.duration*pct;
+    });
+    // Drag-stöd: håll musen nere och dra för att spola
+    let dragging=false;
+    progress.addEventListener('mousedown',(e)=>{dragging=true;});
+    document.addEventListener('mousemove',(e)=>{
+      if(!dragging||!audio.duration)return;
+      const rect=progress.getBoundingClientRect();
+      const pct=Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width));
+      audio.currentTime=audio.duration*pct;
+    });
+    document.addEventListener('mouseup',()=>{dragging=false;});
+    // Touch-stöd för mobil
+    progress.addEventListener('touchstart',(e)=>{
+      if(!audio.duration)return;
+      const rect=progress.getBoundingClientRect();
+      const pct=Math.max(0,Math.min(1,(e.touches[0].clientX-rect.left)/rect.width));
+      audio.currentTime=audio.duration*pct;
+      e.preventDefault();
+    },{passive:false});
+  }
+}
+
+// === SPOLA-KNAPPAR (10 sek bakåt / framåt) ===
+function audioSeek(sid,delta){
+  const audio=document.getElementById('audio-'+sid);
+  if(!audio||!audio.duration)return;
+  audio.currentTime=Math.max(0,Math.min(audio.duration,audio.currentTime+delta));
 }
 
 function playAudio(path,sid){
